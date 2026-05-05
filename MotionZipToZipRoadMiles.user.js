@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         8 MotionTMS Zip to Zip Road Miles
+// @name         MotionTMS Zip to Zip Road Miles
 // @namespace    MotionTMS-Custom-Scripts
 // @version      11.0.6
 // @description  Displays Air Miles with Road Miles below without a separator.
