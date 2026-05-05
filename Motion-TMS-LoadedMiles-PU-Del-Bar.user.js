@@ -5,8 +5,8 @@
 // @match        https://*.motiontms.com/*
 // @grant        none
 // @run-at       document-start
-// @downloadURL  https://raw.githubusercontent.com/PjSkip/TamperMonkeyScripts/main/Motion-TMS-LoadedMiles-PU-Del-Bar.user.js
 // @updateURL    https://raw.githubusercontent.com/PjSkip/TamperMonkeyScripts/main/Motion-TMS-LoadedMiles-PU-Del-Bar.user.js
+// @downloadURL  https://raw.githubusercontent.com/PjSkip/TamperMonkeyScripts/main/Motion-TMS-LoadedMiles-PU-Del-Bar.user.js
 // ==/UserScript==
 
 (function() {
