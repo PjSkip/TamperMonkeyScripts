@@ -1,5 +1,6 @@
 // ==UserScript==
 // @name         11 Motion TMS LOADED MILES + PU & Del BAR
+// @version      1.0
 // @author       Ivan Karpenko
 // @match        https://*.motiontms.com/*
 // @grant        none
