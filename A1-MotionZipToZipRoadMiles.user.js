@@ -7,8 +7,8 @@
 // @match        https://*.motiontms.com/*
 // @grant        none
 // @run-at       document-start
-// @updateURL    https://github.com/PjSkip/TamperMonkeyScripts/raw/main/A1-MotionZipToZipRoadMiles.user.js
-// @downloadURL  https://github.com/PjSkip/TamperMonkeyScripts/raw/main/A1-MotionZipToZipRoadMiles.user.js
+// @updateURL    https://raw.githubusercontent.com/PjSkip/TamperMonkeyScripts/main/A1-MotionZipToZipRoadMiles.user.js
+// @downloadURL  https://raw.githubusercontent.com/PjSkip/TamperMonkeyScripts/main/A1-MotionZipToZipRoadMiles.user.js
 // ==/UserScript==
 
 (function() {
