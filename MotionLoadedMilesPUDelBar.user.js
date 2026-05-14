@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Motion TMS Loaded Miles + PU & Del Bar
 // @namespace    MotionTMS-Custom-Scripts
-// @version      1.2.0
+// @version      1.2.3
 // @description  Adds a top bar showing Loaded Miles + Pickup & Delivery addresses with Google Maps button
 // @author       Ivan Karpenko
 // @match        https://*.motiontms.com/*
@@ -13,6 +13,8 @@
 
 (function() {
     'use strict';
+
+    let currentLoadedMiles = 0;
 
     const stateFull = { "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas", "CA": "California", "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware", "FL": "Florida", "GA": "Georgia", "HI": "Hawaii", "ID": "Idaho", "IL": "Illinois", "IN": "Indiana", "IA": "Iowa", "KS": "Kansas", "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland", "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi", "MO": "Missouri", "MT": "Montana", "NE": "Nebraska", "NV": "Nevada", "NH": "New Hampshire", "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York", "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma", "OR": "Oregon", "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina", "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah", "VT": "Vermont", "VA": "Virginia", "WA": "Washington", "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming" };
 
@@ -67,19 +69,15 @@
             if (d2 && d2.length > 2) dests.push(d2);
 
             if (p && dests.length > 0) {
-                // FIXED: Using Google's explicit API parameters to force ZIP preservation and Driving Mode
                 let url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(p)}`;
 
                 if (dests.length === 1) {
                     url += `&destination=${encodeURIComponent(dests[0])}`;
                 } else if (dests.length === 2) {
-                    // Maps treats intermediate stops as 'waypoints'
                     url += `&destination=${encodeURIComponent(dests[1])}&waypoints=${encodeURIComponent(dests[0])}`;
                 }
 
-                // Force "Driving" mode tab to be selected
                 url += `&travelmode=driving`;
-
                 window.open(url, '_blank');
             } else {
                 alert("Please ensure the Pickup and at least one Delivery address are filled.");
@@ -96,8 +94,10 @@
         const locsBox = document.getElementById('locations-box');
 
         if (!d1 && !d2) {
+            currentLoadedMiles = 0;
             if (milesBox) milesBox.innerHTML = `Loaded Miles: `;
             if (locsBox) locsBox.innerHTML = `<div style="font-weight:600; color:#2c5273;">City/State</div><span style="font-size:22px; color:#1e7e34; font-weight:700;">→</span><div style="font-weight:600; color:#2c5273;">City/State</div>`;
+            updateAllUnitsMiles();
             return;
         }
 
@@ -131,6 +131,7 @@
                 }
 
                 const totalMiles = Math.round(totalMeters * 0.000621371);
+                currentLoadedMiles = totalMiles;
 
                 if (milesBox) milesBox.innerHTML = `Loaded Miles: <span style="color:#1e7e34; margin-left: 4px;">${formatNumber(totalMiles)}</span>`;
 
@@ -142,6 +143,8 @@
                 }
 
                 if (locsBox) locsBox.innerHTML = locsHTML;
+
+                updateAllUnitsMiles();
             }
         });
     };
@@ -171,6 +174,91 @@
             calculateMiles();
         }
     };
+
+    function updateAllUnitsMiles() {
+        const milesColumns = document.querySelectorAll('app-available-units-table-miles-column');
+
+        milesColumns.forEach(column => {
+            const container = column.querySelector('.default-text-lt');
+            if (!container) return;
+
+            const innerLink = container.querySelector('.motion-location-link');
+            const dataWrapper = innerLink ? innerLink : container;
+
+            // STRIP HYPERLINK STYLES: Makes the native text look completely regular
+            if (innerLink) {
+                innerLink.style.textDecoration = 'none';
+                innerLink.style.color = '#333';
+                innerLink.style.cursor = 'default';
+            }
+
+            // CLEANUP DUPLICATES: Force-clears any rogue "all" text that got stuck inside the native elements
+            if (innerLink) {
+                Array.from(innerLink.childNodes).forEach(node => {
+                    if (node.nodeType === Node.TEXT_NODE && node.nodeValue.includes('all')) {
+                        node.nodeValue = node.nodeValue.replace(/[\d,\.]+\s*all/gi, '').trim();
+                    }
+                });
+            }
+
+            const rawText = dataWrapper.textContent || "";
+            let roadMiles = 0;
+            let foundRoadMiles = false;
+
+            const miMatch = rawText.match(/([\d,\.]+)\s*mi/i);
+            if (miMatch) {
+                roadMiles = parseFloat(miMatch[1].replace(/,/g, ''));
+                foundRoadMiles = true;
+            }
+
+            // RULE 1 & 2: If no loaded miles or no road miles, clear custom display and abort
+            if (!currentLoadedMiles || currentLoadedMiles <= 0 || !foundRoadMiles || roadMiles <= 0) {
+                const existingAllMiles = container.querySelector('.custom-all-miles-display');
+                if (existingAllMiles) existingAllMiles.remove();
+                return;
+            }
+
+            const allMiles = Math.ceil(currentLoadedMiles + roadMiles);
+
+            let allMilesDiv = container.querySelector('.custom-all-miles-display');
+
+            // NEW DOM PLACEMENT: Insert into the outer container, not the inner link span
+            if (!allMilesDiv) {
+                allMilesDiv = document.createElement('div');
+                allMilesDiv.className = 'custom-all-miles-display';
+
+                // Styling text to look regular (no underline) but highlighted in green
+                allMilesDiv.style.cssText = 'display: block !important; width: 100% !important; font-weight: bold !important; color: #1e7e34 !important; font-size: 13.5px !important; margin-bottom: 2px !important; text-align: center !important; text-decoration: none !important; cursor: default !important;';
+
+                if (innerLink) {
+                    container.insertBefore(allMilesDiv, innerLink);
+                } else {
+                    container.insertBefore(allMilesDiv, container.firstChild);
+                }
+            }
+
+            allMilesDiv.textContent = `${formatNumber(allMiles)} all`;
+
+            // Enforce Flexbox on the container to cleanly separate our new div and the native link
+            container.style.display = 'flex';
+            container.style.flexDirection = 'column';
+            container.style.alignItems = 'center';
+            container.style.justifyContent = 'center';
+            container.style.textAlign = 'center';
+
+            // Ensure the native link respects the line breaks
+            if (innerLink) {
+                innerLink.style.display = 'flex';
+                innerLink.style.flexDirection = 'column';
+                innerLink.style.alignItems = 'center';
+                innerLink.style.whiteSpace = 'pre-line';
+                innerLink.style.lineHeight = '1.4';
+            } else {
+                container.style.whiteSpace = 'pre-line';
+                container.style.lineHeight = '1.4';
+            }
+        });
+    }
 
     function injectCustomUI() {
         if (!location.href.includes('/available-trucks/list')) return;
@@ -268,6 +356,7 @@
     setInterval(() => {
         handleNavigation();
         injectCustomUI();
+        updateAllUnitsMiles();
     }, 1000);
 
 })();
