@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Motion TMS Loaded Miles + PU & Del Bar
 // @namespace    MotionTMS-Custom-Scripts
-// @version      1.2.3
+// @version      1.3
 // @description  Adds a top bar showing Loaded Miles + Pickup & Delivery addresses with Google Maps button
 // @author       Ivan Karpenko
 // @match        https://*.motiontms.com/*
