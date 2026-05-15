@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Motion TMS Loaded Miles + PU & Del Bar
 // @namespace    MotionTMS-Custom-Scripts
-// @version      1.3
+// @version      12.5
 // @description  Adds a top bar showing Loaded Miles + Pickup & Delivery addresses with Google Maps button
 // @author       Ivan Karpenko
 // @match        https://*.motiontms.com/*
@@ -15,6 +15,21 @@
     'use strict';
 
     let currentLoadedMiles = 0;
+
+    // Modern Routes API Singleton
+    let RouteMatrixClass = null;
+
+    const initRoutesAPI = async () => {
+        if (!RouteMatrixClass && window.google?.maps?.importLibrary) {
+            try {
+                const { RouteMatrix } = await google.maps.importLibrary("routes");
+                RouteMatrixClass = RouteMatrix;
+            } catch (err) {
+                console.error("Failed to load google.maps.routes:", err);
+            }
+        }
+        return RouteMatrixClass;
+    };
 
     const stateFull = { "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas", "CA": "California", "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware", "FL": "Florida", "GA": "Georgia", "HI": "Hawaii", "ID": "Idaho", "IL": "Illinois", "IN": "Indiana", "IA": "Iowa", "KS": "Kansas", "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland", "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi", "MO": "Missouri", "MT": "Montana", "NE": "Nebraska", "NV": "Nevada", "NH": "New Hampshire", "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York", "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma", "OR": "Oregon", "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina", "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah", "VT": "Vermont", "VA": "Virginia", "WA": "Washington", "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming" };
 
@@ -30,6 +45,12 @@
         const fullState = stateFull[state] || state;
         let city = address.split(',')[0].trim();
         return `${city}, ${state}${zip} (${fullState})`;
+    };
+
+    // NEW: Flattens multi-line/messy text into a perfect single string for the URL
+    const cleanForMaps = (address) => {
+        if (!address) return "";
+        return address.replace(/\s+/g, ' ').trim();
     };
 
     function createMileageUI() {
@@ -60,9 +81,10 @@
 
         document.getElementById('maps-go-btn').onclick = (e) => {
             e.stopImmediatePropagation();
-            const p = document.querySelector('.mat-body-2.tw-break-normal.ng-star-inserted')?.textContent.trim();
-            const d1 = document.getElementById('dest1-input')?.value.trim();
-            const d2 = document.getElementById('dest2-input')?.value.trim();
+            // Wash the origin and destination addresses so Google auto-routes instantly
+            const p = cleanForMaps(document.querySelector('.mat-body-2.tw-break-normal.ng-star-inserted')?.textContent);
+            const d1 = cleanForMaps(document.getElementById('dest1-input')?.value);
+            const d2 = cleanForMaps(document.getElementById('dest2-input')?.value);
 
             let dests = [];
             if (d1 && d1.length > 2) dests.push(d1);
@@ -85,7 +107,7 @@
         };
     }
 
-    const calculateMiles = () => {
+    const calculateMiles = async () => {
         const p = document.querySelector('.mat-body-2.tw-break-normal.ng-star-inserted')?.textContent.trim();
         const d1 = document.getElementById('dest1-input')?.value.trim();
         const d2 = document.getElementById('dest2-input')?.value.trim();
@@ -109,27 +131,54 @@
 
         if (dests.length === 0) return;
 
-        let origins = [p];
-        let destinations = [dests[0]];
+        const RouteMatrix = await initRoutesAPI();
+        if (!RouteMatrix) return;
 
-        if (dests.length === 2) {
-            origins.push(dests[0]);
-            destinations.push(dests[1]);
-        }
+        try {
+            // Process routes in parallel for speed
+            let routePromises = [];
 
-        new google.maps.DistanceMatrixService().getDistanceMatrix({
-            origins: origins,
-            destinations: destinations,
-            travelMode: 'DRIVING',
-            unitSystem: google.maps.UnitSystem.IMPERIAL
-        }, (res, status) => {
-            if (status === 'OK' && res.rows[0] && res.rows[0].elements[0].distance) {
-                let totalMeters = res.rows[0].elements[0].distance.value;
+            // Leg 1: Pickup to Drop 1
+            routePromises.push(RouteMatrix.computeRouteMatrix({
+                origins: [p],
+                destinations: [dests[0]],
+                travelMode: 'DRIVING',
+                fields: ['condition', 'distanceMeters']
+            }));
 
-                if (dests.length === 2 && res.rows[1] && res.rows[1].elements[1] && res.rows[1].elements[1].distance) {
-                    totalMeters += res.rows[1].elements[1].distance.value;
+            // Leg 2: Drop 1 to Drop 2 (if exists)
+            if (dests.length === 2) {
+                routePromises.push(RouteMatrix.computeRouteMatrix({
+                    origins: [dests[0]],
+                    destinations: [dests[1]],
+                    travelMode: 'DRIVING',
+                    fields: ['condition', 'distanceMeters']
+                }));
+            }
+
+            const responses = await Promise.all(routePromises);
+            let totalMeters = 0;
+            let routesValid = true;
+
+            // Extract distance safely from both possible legs
+            for (const response of responses) {
+                const matrixData = response?.matrix || response;
+                const firstRow = matrixData?.rows?.[0];
+                const route = firstRow?.items?.[0] || firstRow?.elements?.[0] || firstRow?.[0];
+
+                if (route && route.distanceMeters !== undefined) {
+                    totalMeters += route.distanceMeters;
+                } else {
+                    routesValid = false;
+                    // Strict Console: Only fire on explicit, structured API errors
+                    if (response && response.error) {
+                        console.warn("Motion TMS Loaded Miles Script: API Error Response:", response.error);
+                    }
                 }
+            }
 
+            if (routesValid && totalMeters > 0) {
+                // Force miles conversion mathematically (Using your original precision math)
                 const totalMiles = Math.round(totalMeters * 0.000621371);
                 currentLoadedMiles = totalMiles;
 
@@ -146,7 +195,9 @@
 
                 updateAllUnitsMiles();
             }
-        });
+        } catch (error) {
+            console.error("RouteMatrix API Error during Loaded Miles calculation:", error);
+        }
     };
 
     const geocodeAndCalc = (el) => {
@@ -307,21 +358,40 @@
         }
     });
 
+    // --- OPTIMIZED OBSERVER LOGIC ---
     let lastUrl = location.href;
-    let burstInterval;
+    let domObserver = null;
+    let debounceTimer = null;
+
+    const debouncedUpdate = () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            injectCustomUI();
+            updateAllUnitsMiles();
+        }, 100);
+    };
 
     function startWatching() {
-        const mainObserver = new MutationObserver(() => injectCustomUI());
-        mainObserver.observe(document.documentElement, { childList: true, subtree: true });
+        if (domObserver) domObserver.disconnect();
 
-        if (burstInterval) clearInterval(burstInterval);
+        if (location.href.includes('/available-trucks/list')) {
+            debouncedUpdate();
 
-        let burstCount = 0;
-        burstInterval = setInterval(() => {
-            injectCustomUI();
-            burstCount++;
-            if (burstCount > 60) clearInterval(burstInterval);
-        }, 50);
+            const targetContainer = document.querySelector('app-available-units-list') ||
+                                    document.querySelector('.mat-table') ||
+                                    document.body;
+
+            domObserver = new MutationObserver((mutations) => {
+                for (const mutation of mutations) {
+                    if (mutation.addedNodes.length > 0) {
+                        debouncedUpdate();
+                        break;
+                    }
+                }
+            });
+
+            domObserver.observe(targetContainer, { childList: true, subtree: true });
+        }
     }
 
     if (document.readyState === 'loading') {
@@ -334,7 +404,7 @@
         if (location.href !== lastUrl) {
             lastUrl = location.href;
             if (location.href.includes('/available-trucks/list')) {
-                setTimeout(startWatching, 50);
+                setTimeout(startWatching, 150);
             }
         }
     }
@@ -353,10 +423,12 @@
 
     window.addEventListener('popstate', handleNavigation);
 
+    // Occasional safety check for dynamic status changes
     setInterval(() => {
-        handleNavigation();
-        injectCustomUI();
-        updateAllUnitsMiles();
-    }, 1000);
+        if (location.href.includes('/available-trucks/list')) {
+            injectCustomUI();
+            updateAllUnitsMiles();
+        }
+    }, 3000);
 
 })();
