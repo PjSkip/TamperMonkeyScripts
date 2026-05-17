@@ -2,7 +2,7 @@
 // @name         MotionTMS Zip to Zip Road Miles
 // @namespace    MotionTMS-Custom-Scripts
 // @version      13.14
-// @description  Displays Air Miles with Road Miles below without a separator.
+// @description  Displays Road Miles on the "Available Trucks" page in Motion TMS
 // @author       Ivan Karpenko
 // @match        https://*.motiontms.com/*
 // @grant        none
