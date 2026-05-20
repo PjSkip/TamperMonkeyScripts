@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         MotionTMS Zip to Zip Road Miles
 // @namespace    MotionTMS-Custom-Scripts
-// @version      16.8
-// @description  Restored Road Miles via OSRM + Instant Cache & Native UI
+// @version      16.9
+// @description  Restored Road Miles via OSRM + Instant Cache & Native UI (Whole Numbers)
 // @author       Ivan Karpenko
 // @match        https://*.motiontms.com/*
 // @grant        none
@@ -22,31 +22,31 @@
     const STYLE = `
         .address-toggle-btn { cursor: pointer; display: inline-flex; align-items: center; background: rgba(0,0,0,0.06); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.08); font-size: 11px !important; line-height: 1; transition: all 0.2s ease; vertical-align: middle; }
         .address-toggle-active { background-color: #d1e7dd !important; border-color: #a3cfbb !important; }
-
+        
         /* Transparent Hero Bubble with Light Blue Border */
-        .usko-miles-bubble {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            border: 1px solid #a2d2ff;
-            border-radius: 5px;
-            padding: 2px 5px;
-            text-decoration: none !important;
-            background-color: transparent;
-            transition: all 0.2s ease;
-            margin-top: 2px;
+        .usko-miles-bubble { 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 4px; 
+            border: 1px solid #a2d2ff; 
+            border-radius: 5px; 
+            padding: 2px 5px; 
+            text-decoration: none !important; 
+            background-color: transparent; 
+            transition: all 0.2s ease; 
+            margin-top: 2px; 
             max-width: 100%;
         }
-
+        
         /* STRICT Cursor Fix: Applies to the bubble and everything inside it */
         .usko-miles-bubble, .usko-miles-bubble * {
             cursor: pointer !important;
         }
 
-        .usko-miles-bubble:hover {
-            border-color: #7ab8f5;
-            background-color: rgba(162, 210, 255, 0.1);
+        .usko-miles-bubble:hover { 
+            border-color: #7ab8f5; 
+            background-color: rgba(162, 210, 255, 0.1); 
         }
 
         /* Click States */
@@ -57,27 +57,27 @@
             border-color: #dc3545 !important; /* Red Border */
         }
 
-        .usko-miles-text {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            line-height: 1.15;
-            white-space: nowrap;
+        .usko-miles-text { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            line-height: 1.15; 
+            white-space: nowrap; 
             overflow: hidden;
         }
-
+        
         /* Native TMS styling inheritance (No blue, no underline) */
-        .usko-air-miles, .usko-road-miles {
-            color: #333 !important;
-            font-size: inherit !important;
+        .usko-air-miles, .usko-road-miles { 
+            color: #333 !important; 
+            font-size: inherit !important; 
             font-family: inherit !important;
-            font-weight: normal !important;
-            text-decoration: none !important;
+            font-weight: normal !important; 
+            text-decoration: none !important; 
         }
-        .usko-maps-icon {
-            width: 20px;
-            height: 20px;
-            flex-shrink: 0;
+        .usko-maps-icon { 
+            width: 20px; 
+            height: 20px; 
+            flex-shrink: 0; 
         }
     `;
     const styleSheet = document.createElement("style");
@@ -173,9 +173,9 @@
     // 2. TRUE 1ST-OF-THE-MONTH CACHE WIPE
     // ==========================================
     function checkAndFlushCache() {
-        const currentMonth = new Date().toISOString().slice(0, 7);
+        const currentMonth = new Date().toISOString().slice(0, 7); 
         const lastMonth = localStorage.getItem('usko_cache_month');
-
+        
         if (lastMonth !== currentMonth) {
             Object.keys(localStorage).forEach(key => {
                 if (key.startsWith('usko_geo_') || key.startsWith('usko_route_')) {
@@ -195,9 +195,9 @@
     const getMapQuery = (address) => {
         if (!address) return "";
         const zipMatch = address.match(/\b\d{5}\b/);
-        if (zipMatch) return zipMatch[0];
+        if (zipMatch) return zipMatch[0]; 
         let clean = address.replace(/\bUSA\b/ig, '').replace(/\bUnited States\b/ig, '').replace(/\s+/g, ' ').trim();
-        return clean.replace(/^,+|,+$/g, '').trim();
+        return clean.replace(/^,+|,+$/g, '').trim(); 
     };
 
     async function getCoordinates(address) {
@@ -226,7 +226,7 @@
         const dClean = cleanForMaps(destAddr);
         const oCached = localStorage.getItem('usko_geo_' + oClean);
         const dCached = localStorage.getItem('usko_geo_' + dClean);
-
+        
         if (oCached && dCached) {
             const oCoords = JSON.parse(oCached);
             const dCoords = JSON.parse(dCached);
@@ -254,7 +254,8 @@
             const data = await res.json();
 
             if (data.routes && data.routes[0]) {
-                const miles = Math.round(data.routes[0].distance / 1609.344);
+                // Ensure the number is strictly rounded up to a whole number
+                const miles = Math.ceil(data.routes[0].distance / 1609.344);
                 localStorage.setItem(routeKey, miles.toString());
                 return miles;
             }
@@ -270,14 +271,16 @@
         if (roadMilesVal === "loading") {
             displayText = "... mi";
         } else if (roadMilesVal !== null) {
-            displayText = (roadMilesVal >= 1000 ? roadMilesVal.toLocaleString() : roadMilesVal) + ' mi';
+            const roundedRoad = Math.ceil(roadMilesVal);
+            displayText = (roundedRoad >= 1000 ? roundedRoad.toLocaleString() : roundedRoad) + ' mi';
         } else {
-            displayText = (parseFloat(airMilesText) || 0).toLocaleString() + ' mi';
+            const airNum = Math.ceil(parseFloat(airMilesText) || 0);
+            displayText = (airNum >= 1000 ? airNum.toLocaleString() : airNum) + ' mi';
         }
 
         const mapUnit = encodeURIComponent(getMapQuery(locCell));
         const mapPickup = encodeURIComponent(getMapQuery(rawOrigin));
-
+        
         // Fixed: Official Google Maps Directions API URL
         const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${mapUnit}&destination=${mapPickup}&travelmode=driving`;
 
@@ -339,7 +342,7 @@
                 milesCell.dataset.uskoProcessed = "true";
             } else {
                 // NEEDS NETWORK: Show loading UI instantly
-                milesCell.dataset.uskoProcessed = "processing";
+                milesCell.dataset.uskoProcessed = "processing"; 
                 renderBubbleUI(milesCell, airMilesText, "loading", rawOrigin, locCell);
 
                 // Queue the network fetch
@@ -357,13 +360,18 @@
 
     async function fetchAndUpdateRow(milesCell, airMilesText, rawOrigin, locCell) {
         const roadMilesNum = await fetchRoadMiles(rawOrigin, locCell);
-
+        
         const roadMilesSpan = milesCell.querySelector('.usko-road-miles');
         if (roadMilesSpan) {
-            // Seamless update
-            const displayText = roadMilesNum !== null
-                ? (roadMilesNum >= 1000 ? roadMilesNum.toLocaleString() : roadMilesNum) + ' mi'
-                : (parseFloat(airMilesText) || 0).toLocaleString() + ' mi';
+            // Seamless update ensuring whole numbers
+            let displayText;
+            if (roadMilesNum !== null) {
+                const roundedRoad = Math.ceil(roadMilesNum);
+                displayText = (roundedRoad >= 1000 ? roundedRoad.toLocaleString() : roundedRoad) + ' mi';
+            } else {
+                const airNum = Math.ceil(parseFloat(airMilesText) || 0);
+                displayText = (airNum >= 1000 ? airNum.toLocaleString() : airNum) + ' mi';
+            }
             roadMilesSpan.textContent = displayText;
         } else {
             // Fallback render
