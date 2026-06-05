@@ -1,3 +1,0 @@
-This is a temporary test file for delete functionality testing.
-Created at test time.
-Safe to delete.
