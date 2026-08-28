@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Gmail Highway Carrier411 MC badges
 // @namespace    shipsierra.highway.gmail
-// @version      1.17.14
-// @description  Conversation bar + compact MC chips in Gmail from Highway and Carrier411. DNU, identity, domain match (never your logged-in domain), FreightGuard. Settings on the bar. Click MC copies the number. Open C411 tab fills FreightGuard after sign-in.
+// @version      1.17.15
+// @description  Highway and Carrier411 carrier info next to MC numbers in Gmail.
 // @author       Ivan Karpenko
 // @homepageURL  https://github.com/PjSkip/TamperMonkeyScripts
 // @updateURL    https://raw.githubusercontent.com/PjSkip/TamperMonkeyScripts/main/GmailHighwayCarrier411MCBadges.user.js
