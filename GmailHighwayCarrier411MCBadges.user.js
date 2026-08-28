@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail Highway Carrier411 MC badges
 // @namespace    shipsierra.highway.gmail
-// @version      1.17.13
+// @version      1.17.14
 // @description  Conversation bar + compact MC chips in Gmail from Highway and Carrier411. DNU, identity, domain match (never your logged-in domain), FreightGuard. Settings on the bar. Click MC copies the number. Open C411 tab fills FreightGuard after sign-in.
 // @author       Ivan Karpenko
 // @homepageURL  https://github.com/PjSkip/TamperMonkeyScripts
@@ -67,7 +67,8 @@
   };
   var C411_FIELD_META = {
     fg: { label: 'FreightGuard (FG 8/12/26)', source: 'Carrier411 Reported Items date' },
-    rating: { label: 'Safety rating (SAT/COND/UNSAT)', source: 'Carrier411 Safety Rating' }
+    rating: { label: 'Safety rating (SAT/COND/UNSAT)', source: 'Carrier411 Safety Rating' },
+    related: { label: 'Related companies (Related cos)', source: 'Carrier411 “Related companies detected” on the company page' }
   };
 
   GM_addStyle(
@@ -269,7 +270,8 @@
       ],
       c411: [
         { id: 'fg', on: true },
-        { id: 'rating', on: false }
+        { id: 'rating', on: false },
+        { id: 'related', on: false }
       ]
     };
   }
@@ -2142,10 +2144,13 @@
           };
         }
         addPill(c411Hit, rp.cls, rp.text, rp.title);
+      } else if (id === 'related') {
+        if (state.fg.related) {
+          addPill(c411Hit, 'hwy-mc-fail', 'Related cos', 'Carrier411: related companies detected');
+        }
       }
     }
     if (state.fg.loss) addPill(c411Hit, 'hwy-mc-dnu', 'Freight loss', 'Carrier411: unjustified loss of freight reported');
-    if (state.fg.related) addPill(c411Hit, 'hwy-mc-fail', 'Related cos', 'Carrier411: related companies detected');
     c411Hit.title = 'Open Carrier411 for ' + docketFromMc(mc);
   }
 
