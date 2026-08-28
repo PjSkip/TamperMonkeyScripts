@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail Highway Carrier411 MC badges
 // @namespace    shipsierra.highway.gmail
-// @version      1.17.15
+// @version      1.17.16
 // @description  Highway and Carrier411 carrier info next to MC numbers in Gmail.
 // @author       Ivan Karpenko
 // @homepageURL  https://github.com/PjSkip/TamperMonkeyScripts
@@ -162,6 +162,10 @@
       '#ss-hwy-c411-panel .ss-set-check{width:18px;height:18px;flex:none;border:2px solid #5f6368;border-radius:4px;background:#fff;color:#fff;text-align:center;font:700 12px/14px sans-serif;box-sizing:border-box;}' +
       '#ss-hwy-c411-panel .ss-set-check[aria-checked="true"]{background:#1a73e8;border-color:#1a73e8;}' +
       '#ss-hwy-c411-panel .ss-set-lab{flex:1;cursor:pointer;color:#202124;font-size:13px;}' +
+      '#ss-hwy-c411-panel .ss-set-row.ss-has-extra{flex-wrap:wrap;align-items:flex-start;}' +
+      '#ss-hwy-c411-panel .ss-set-extra{flex:1 1 100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:2px 0 4px 42px;font-size:12px;color:#5f6368;cursor:default;}' +
+      '#ss-hwy-c411-panel .ss-set-nlab{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;cursor:default;}' +
+      '#ss-hwy-c411-panel .ss-set-num{width:58px;padding:3px 6px;border:1px solid #dadce0;border-radius:6px;font:12px/1.2 inherit;background:#fff;color:#202124;}' +
       '#ss-hwy-c411-shade{position:fixed;inset:0;z-index:2147483646;background:rgba(15,23,42,.12);display:none;}' +
       '#ss-hwy-c411-shade.ss-open{display:block;}'
   );
@@ -254,6 +258,28 @@
     if (l.indexOf('fail') >= 0) return 'Fail';
     return label || '—';
   }
+  function numOr(v, fb) {
+    var n = Number(v);
+    if (v === '' || v == null || isNaN(n)) return fb;
+    return n;
+  }
+  function defaultThresh() {
+    return { unitsMin: 10, safetyGreen: 0, safetyYellow: 3, safetyRed: 3 };
+  }
+  function mergeThresh(got) {
+    var d = defaultThresh();
+    if (!got || typeof got !== 'object') return d;
+    return {
+      unitsMin: numOr(got.unitsMin, d.unitsMin),
+      safetyGreen: numOr(got.safetyGreen, d.safetyGreen),
+      safetyYellow: numOr(got.safetyYellow, d.safetyYellow),
+      safetyRed: numOr(got.safetyRed, d.safetyRed)
+    };
+  }
+  function loadThresh() {
+    var s = loadSettings();
+    return mergeThresh(s && s.thresh);
+  }
   function defaultSettings() {
     return {
       ui: 'both',
@@ -272,7 +298,8 @@
         { id: 'fg', on: true },
         { id: 'rating', on: false },
         { id: 'related', on: false }
-      ]
+      ],
+      thresh: defaultThresh()
     };
   }
   function mergeSettings(saved) {
@@ -301,7 +328,12 @@
       return ordered;
     }
     var ui = saved.ui === 'bar' || saved.ui === 'inline' || saved.ui === 'both' ? saved.ui : 'both';
-    return { ui: ui, hwy: merge(d.hwy, saved.hwy), c411: merge(d.c411, saved.c411) };
+    return {
+      ui: ui,
+      hwy: merge(d.hwy, saved.hwy),
+      c411: merge(d.c411, saved.c411),
+      thresh: mergeThresh(saved.thresh)
+    };
   }
   function findMcMatches(text) {
     var s = String(text || '');
@@ -780,8 +812,10 @@
   function safetyClass(score) {
     if (score == null || score === '' || isNaN(Number(score))) return 'hwy-mc-wait';
     var n = Number(score);
-    if (n === 0) return 'hwy-mc-pass';
-    if (n > 0 && n <= 3) return 'hwy-mc-basic-mid';
+    var t = loadThresh();
+    if (n <= t.safetyGreen) return 'hwy-mc-pass';
+    if (n > t.safetyRed) return 'hwy-mc-fail';
+    if (n <= t.safetyYellow) return 'hwy-mc-basic-mid';
     return 'hwy-mc-fail';
   }
   function safetyTitle(detail) {
@@ -1973,7 +2007,7 @@
     if (fleet == null || fleet === '') return 'hwy-mc-wait';
     var n = Number(fleet);
     if (isNaN(n)) return 'hwy-mc-wait';
-    return n >= 10 ? 'hwy-mc-units-ok' : 'hwy-mc-units-low';
+    return n >= loadThresh().unitsMin ? 'hwy-mc-units-ok' : 'hwy-mc-units-low';
   }
 
   function el(tag, cls, text) {
@@ -3119,6 +3153,46 @@
     if (!panelEl) return;
     var q = String(query || '').toLowerCase();
     var s = loadSettings();
+    if (!s.thresh) s.thresh = defaultThresh();
+    function makeNum(value, key, fallback, step) {
+      var inp = document.createElement('input');
+      inp.type = 'number';
+      inp.className = 'ss-set-num';
+      inp.min = '0';
+      inp.step = step || 'any';
+      inp.value = String(value);
+      function stop(ev) {
+        ev.stopPropagation();
+      }
+      inp.addEventListener('mousedown', stop);
+      inp.addEventListener('click', stop);
+      inp.addEventListener('keydown', stop);
+      inp.addEventListener('input', function (ev) {
+        ev.stopPropagation();
+        if (inp.value === '' || isNaN(Number(inp.value))) return;
+        s.thresh[key] = Number(inp.value);
+        saveSettings(s);
+      });
+      inp.addEventListener('change', function (ev) {
+        ev.stopPropagation();
+        if (inp.value === '' || isNaN(Number(inp.value))) {
+          inp.value = String(fallback);
+          s.thresh[key] = fallback;
+          saveSettings(s);
+        }
+      });
+      return inp;
+    }
+    function labNum(text, inp) {
+      var labEl = document.createElement('label');
+      labEl.className = 'ss-set-nlab';
+      labEl.appendChild(document.createTextNode(text + ' '));
+      labEl.appendChild(inp);
+      labEl.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+      });
+      return labEl;
+    }
     function fill(which, meta, host) {
       if (!host) return;
       while (host.firstChild) host.removeChild(host.firstChild);
@@ -3141,6 +3215,7 @@
         row.title = spec.source || lab;
         function toggleRow(ev) {
           if (ev.target === grip) return;
+          if (ev.target && ev.target.closest && ev.target.closest('.ss-set-extra, .ss-set-num, .ss-set-nlab')) return;
           ev.preventDefault();
           ev.stopPropagation();
           item.on = !item.on;
@@ -3151,6 +3226,26 @@
         row.appendChild(grip);
         row.appendChild(box);
         row.appendChild(name);
+        if (which === 'hwy' && (item.id === 'units' || item.id === 'safety')) {
+          row.className += ' ss-has-extra';
+          var extra = el('div', 'ss-set-extra');
+          extra.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+          });
+          extra.addEventListener('mousedown', function (ev) {
+            ev.stopPropagation();
+          });
+          var th = s.thresh;
+          if (item.id === 'units') {
+            extra.appendChild(labNum('If less than', makeNum(th.unitsMin, 'unitsMin', 10, '1')));
+            extra.appendChild(document.createTextNode('units, badge is red'));
+          } else {
+            extra.appendChild(labNum('Green ≤', makeNum(th.safetyGreen, 'safetyGreen', 0, 'any')));
+            extra.appendChild(labNum('Yellow ≤', makeNum(th.safetyYellow, 'safetyYellow', 3, 'any')));
+            extra.appendChild(labNum('Red >', makeNum(th.safetyRed, 'safetyRed', 3, 'any')));
+          }
+          row.appendChild(extra);
+        }
         row.addEventListener('dragstart', function (ev) {
           ev.dataTransfer.setData('text/plain', item.id);
           ev.dataTransfer.effectAllowed = 'move';
