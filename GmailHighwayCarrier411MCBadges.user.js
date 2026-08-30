@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail Highway Carrier411 MC badges
 // @namespace    shipsierra.highway.gmail
-// @version      1.18.15
+// @version      1.18.20
 // @description  Highway and Carrier411 carrier info next to MC numbers in Gmail.
 // @author       Ivan Karpenko
 // @copyright    2026, ShipSierra.com (Ivan Karpenko)
@@ -15,6 +15,8 @@
 // @match        https://highway.com/broker/carriers/*
 // @match        https://*.highway.com/broker/carriers/*
 // @connect      highway.com
+// @connect      www.carrier411.com
+// @connect      carrier411.com
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -37,7 +39,7 @@
   var CACHE_KEY = 'hwy_mc_cache_v10';
   var C411_CACHE_KEY = 'c411_fg_cache_v1';
   var SETTINGS_KEY = 'hwy_c411_badge_settings_v3';
-  var SCRIPT_VERSION = '1.18.15';
+  var SCRIPT_VERSION = '1.18.20';
   var SCRIPT_TITLE = 'ShipSierra.com Carrier Check on Hwy/C411';
   var RELEASE_DATE = 'August 30, 2026';
   var ORG_MC_KEY = 'ss_org_mc';
@@ -46,6 +48,9 @@
   var CALLOUT_BG = '#fff6d9';
   var CARET_PX = 11;
   var RELEASE_NOTES =
+    '• Switching to Next to MC hides the bar right away.\n' +
+    '• Carrier411 can load with the Carrier411 tab closed.\n' +
+    '• If you are logged out of Carrier411, the bar says Login. Click it to sign in.\n' +
     '• Each reply in a long thread gets its own carrier bar.\n' +
     '• Highway lookups start fresh after this update, then stay saved for the rest of the day.';
   var HWY_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAHGSURBVHgB7ZZNTsJQEMdnWqWwqwsjyx5BtxJjOQF6AnoDuYF4MkgMuhRPQNlh3LCyBdOOry2B8j4LYWd/m5fMTOf937yPKUBNzX8HTQHRpD1EpGfOPG3eft2UDfHb1YwNXtlGhC+tzmIIGiwwKUTqC0aCucT2KSRHegIDWgHRa9sHblWFKgh5UwqijQDcTY7jBICdBgpPCBVE5RPY+iooBUSjtoeAfZmPEpwK8xMuFal8GrkuHCoAGuCrXLaVCJPZkExlsdk2rBwngEMFIKTK0jU638JkiWWrKpDRU88jYT25vE7R+gA1ocLuqT5g29Zt3S3GvP1MFpwgDgwPhAcHgjY9sGHM26VbwA7fPZwYtqC+7DAKAtjLF8ARKzSRHcYfp+WDSYD05TsRtuRg7211fvcdmoGeUO0iVmJ0QYOzWl1gd7m9MfuHsAEBGLAofZRdw4zonS2A9AuIG80BG4bbfGVnlfKfr39Dla8Zx7q3oJiQa1BbAcrGU4Lt17JcPsGf+0grgm9QuwqoG0/54xDMQcaYcoPKBegaD5d8bowBrBCza1BFBTSNZz+3eXVphSqVG5RV5E2Nfy4bQmNEBZEbelBTU8P4A46qjYFyL5/4AAAAAElFTkSuQmCC';
@@ -1083,6 +1088,7 @@
   }
   function cacheNeedsHwyExtras(hit) {
     if (!hit) return true;
+    if (extrasOn('hwy', ['safety']) && hit.safety == null) return true;
     if (extrasOn('hwy', ['connection', 'dnu']) && hit.connStatus === undefined) return true;
     if (extrasOn('hwy', ['domain']) && !Array.isArray(hit.emails)) return true;
     if (extrasOn('hwy', ['cargo']) && hit.cargoAmt == null) return true;
@@ -1333,44 +1339,7 @@
     };
   }
 
-  function readC411Jobs() {
-    try {
-      return JSON.parse(GM_getValue('c411_jobs', '{}') || '{}');
-    } catch (e) {
-      return {};
-    }
-  }
-  function writeC411Jobs(jobs) {
-    GM_setValue('c411_jobs', JSON.stringify(jobs || {}));
-  }
-  function jobIsPending(v) {
-    return v === 'pending' || (v && typeof v === 'object' && v.status === 'pending');
-  }
-  function enqueueC411Job(mc) {
-    var jobs = readC411Jobs();
-    jobs[mc] = 'pending';
-    writeC411Jobs(jobs);
-    GM_setValue('c411_wake', Date.now());
-  }
-  function dropC411Job(mc) {
-    var jobs = readC411Jobs();
-    delete jobs[mc];
-    writeC411Jobs(jobs);
-  }
-
-  function c411WorkerAlive() {
-    var ping = Number(GM_getValue('c411_worker_ping', 0) || 0);
-    return ping && Date.now() - ping < 3 * 60 * 1000;
-  }
-  function requestOpenC411(mc) {
-    GM_setValue(
-      'c411_open',
-      JSON.stringify({ docket: docketFromMc(mc), ts: Date.now() })
-    );
-  }
-
   var c411Inflight = {};
-  var c411Waiters = {};
   var c411Clicked = {};
   function markC411Clicked(mc) {
     if (!mc) return;
@@ -1431,19 +1400,9 @@
       });
     });
   }
-  function notifyC411Waiters() {
-    Object.keys(c411Waiters).forEach(function (mc) {
-      var hit = getC411Cached(mc);
-      if (!hit) return;
-      var fn = c411Waiters[mc];
-      delete c411Waiters[mc];
-      fn(hit);
-    });
-  }
   if (typeof GM_addValueChangeListener === 'function') {
     GM_addValueChangeListener(C411_CACHE_KEY, function () {
       c411CacheMem = null;
-      notifyC411Waiters();
       refreshC411WrapsFromCache();
     });
     GM_addValueChangeListener(CACHE_KEY, function () {
@@ -1473,6 +1432,58 @@
     delete all[mc];
     writeC411Cache(all);
   }
+  function gmGetHtml(url) {
+    return new Promise(function (resolve, reject) {
+      GM_xmlhttpRequest({
+        method: 'GET',
+        url: url,
+        anonymous: false,
+        timeout: 15000,
+        headers: { Accept: 'text/html' },
+        onload: function (res) {
+          if (res.status === 429) {
+            reject(new Error('429'));
+            return;
+          }
+          if (res.status < 200 || res.status >= 300) {
+            reject(new Error('HTTP ' + res.status));
+            return;
+          }
+          resolve(String(res.responseText || ''));
+        },
+        onerror: function () {
+          reject(new Error('network'));
+        },
+        ontimeout: function () {
+          reject(new Error('timeout'));
+        }
+      });
+    });
+  }
+  function parseC411HtmlToFg(html) {
+    var parsed = parseC411Page(html);
+    var text = String(html || '');
+    if (
+      /unauthorized=1|link\.cfm/i.test(text) ||
+      (/unauthorized/i.test(text) && !/USDOT\s+\d+/i.test(text)) ||
+      (/Login Message/i.test(text) && !/USDOT\s+\d+/i.test(text))
+    ) {
+      return { ok: false, hasFg: false, login: true };
+    }
+    return parsed;
+  }
+  function fetchC411Direct(mc) {
+    var url = C411_URL + encodeURIComponent(docketFromMc(mc));
+    return gmGetHtml(url).then(function (html) {
+      var parsed = parseC411HtmlToFg(html);
+      if (parsed.login) {
+        setC411Cached(mc, { hasFg: false, login: true, ok: false });
+      } else {
+        setC411Cached(mc, parsed);
+      }
+      return getC411Cached(mc) || parsed;
+    });
+  }
   function lookupC411(mc, force) {
     if (force) {
       forgetC411Cached(mc);
@@ -1481,191 +1492,35 @@
     var cached = getC411Cached(mc);
     if (cached) return Promise.resolve(cached);
     if (c411Inflight[mc]) return c411Inflight[mc];
-    enqueueC411Job(mc);
-    c411Inflight[mc] = new Promise(function (resolve) {
-      var start = Date.now();
-      var lastKick = 0;
-      var tid;
-      var maxMs = force ? 45000 : 20000;
-      function done(val) {
-        if (tid) clearTimeout(tid);
-        delete c411Waiters[mc];
+    c411Inflight[mc] = fetchC411Direct(mc)
+      .catch(function (err) {
+        var msg = String((err && err.message) || err || '');
+        if (msg === '429' || msg === 'timeout' || msg === 'network' || msg.indexOf('HTTP') === 0) {
+          return { ok: false, hasFg: false, error: true };
+        }
+        return { ok: false, hasFg: false, login: true };
+      })
+      .then(function (fg) {
         delete c411Inflight[mc];
-        resolve(val);
-      }
-      function check() {
-        var hit = getC411Cached(mc);
-        if (hit) {
-          done(hit);
-          return true;
-        }
-        var now = Date.now();
-        if (now - start > maxMs) {
-          dropC411Job(mc);
-          done({
-            ok: false,
-            hasFg: false,
-            login: !c411WorkerAlive(),
-            needTab: !c411WorkerAlive(),
-            error: !!c411WorkerAlive()
-          });
-          return true;
-        }
-        if (now - lastKick > 2500) {
-          lastKick = now;
-          enqueueC411Job(mc);
-        }
-        return false;
-      }
-      c411Waiters[mc] = function (hit) {
-        done(hit);
-      };
-      function poll() {
-        if (check()) return;
-        var elapsed = Date.now() - start;
-        var wait = elapsed < 4000 ? 250 : force ? 900 : 600;
-        tid = setTimeout(poll, wait);
-      }
-      poll();
-    });
+        return fg || { ok: false, hasFg: false, login: true };
+      });
     return c411Inflight[mc];
   }
 
-  function startC411Worker() {
-    var busy = false;
-    var heartbeatTimer = null;
-    var workTimer = null;
-    function heartbeat() {
-      GM_setValue('c411_worker_ping', Date.now());
-    }
-    function startHeartbeat() {
-      if (heartbeatTimer) return;
-      heartbeat();
-      heartbeatTimer = setInterval(heartbeat, 5000);
-    }
-    function stopWorkTimer() {
-      if (!workTimer) return;
-      clearInterval(workTimer);
-      workTimer = null;
-    }
-    function armWorkTimer() {
-      if (workTimer) return;
-      workTimer = setInterval(function () {
-        if (!nextPending()) {
-          stopWorkTimer();
-          return;
-        }
-        tick();
-      }, 1000);
-    }
-    startHeartbeat();
-
-    function nextPending() {
-      var jobs = readC411Jobs();
-      var keys = Object.keys(jobs);
-      for (var i = 0; i < keys.length; i++) {
-        if (jobIsPending(jobs[keys[i]])) return keys[i];
-      }
-      return null;
-    }
-    function finish(mc) {
-      var jobs = readC411Jobs();
-      delete jobs[mc];
-      writeC411Jobs(jobs);
-    }
-    function tick() {
-      heartbeat();
-      if (busy) return;
-      var mc = nextPending();
-      if (!mc) {
-        stopWorkTimer();
-        return;
-      }
-      armWorkTimer();
-      if (getC411Cached(mc)) {
-        finish(mc);
-        return;
-      }
-      busy = true;
-      var url = 'https://www.carrier411.com/manager/companydetail.cfm?docket=' + encodeURIComponent(docketFromMc(mc));
-      fetch(url, { credentials: 'include', headers: { Accept: 'text/html' } })
-        .then(function (r) {
-          if (r.status === 429) throw new Error('429');
-          return r.text();
-        })
-        .then(function (html) {
-          var parsed = parseC411Page(html);
-          if (/unauthorized=1|link\.cfm/i.test(html) || (/unauthorized/i.test(html) && !/USDOT\s+\d+/i.test(html))) {
-            parsed = { ok: false, hasFg: false, login: true };
-          }
-          setC411Cached(mc, parsed.login ? { hasFg: false, login: true, ok: false } : parsed);
-          finish(mc);
-        })
-        .catch(function () {
-          finish(mc);
-          setC411Cached(mc, { hasFg: false, login: false, ok: false, error: true });
-        })
-        .then(function () {
-          busy = false;
-          setTimeout(tick, 500);
-        });
-    }
-
-    function handleOpenRequest() {
-      var raw = GM_getValue('c411_open', '');
-      if (!raw) return;
-      var req = null;
-      try {
-        req = JSON.parse(raw);
-      } catch (e) {
-        return;
-      }
-      if (!req || !req.docket || !req.ts) return;
-      if (Date.now() - req.ts > 8000) return;
-      if (req.done) return;
-      req.done = true;
-      GM_setValue('c411_open', JSON.stringify(req));
-      window.open(
-        'https://www.carrier411.com/manager/companydetail.cfm?docket=' + encodeURIComponent(req.docket),
-        '_blank'
-      );
-    }
-
-    if (typeof GM_addValueChangeListener === 'function') {
-      GM_addValueChangeListener('c411_jobs', function () {
-        armWorkTimer();
-        tick();
-      });
-      GM_addValueChangeListener('c411_wake', function () {
-        armWorkTimer();
-        tick();
-      });
-      GM_addValueChangeListener('c411_open', function () {
-        handleOpenRequest();
-      });
-    } else {
-      armWorkTimer();
-    }
-    tick();
-
+  function startC411PageHint() {
     function cacheLiveDocket() {
       try {
         var m = String(location.search || '').match(/docket=MC0*(\d+)/i);
         if (!m) return;
         var liveMc = String(Number(m[1]));
-        var live = parseC411Page(document.documentElement.innerHTML || '');
+        var live = parseC411HtmlToFg(document.documentElement.innerHTML || '');
         if (!live.login) setC411Cached(liveMc, live);
       } catch (e) {}
     }
     cacheLiveDocket();
-    window.addEventListener('pageshow', function () {
-      cacheLiveDocket();
-      tick();
-    });
+    window.addEventListener('pageshow', cacheLiveDocket);
     document.addEventListener('visibilitychange', function () {
-      if (document.hidden) return;
-      cacheLiveDocket();
-      tick();
+      if (!document.hidden) cacheLiveDocket();
     });
   }
 
@@ -2069,45 +1924,40 @@
     if (!wantDetail && !wantSafety && !wantConn && !wantIns) return Promise.resolve(result);
     var detailUrl = 'https://highway.com/monitor/api/v1/carriers/' + id;
     var safetyUrl = detailUrl + '/safety';
-    hwyExtrasInflight[mc] = Promise.all([
-      wantDetail
-        ? gmGet(detailUrl, mc).catch(function () {
+    var jobs = [];
+    function runExtra(want, url, slot) {
+      if (!want) return;
+      jobs.push(
+        gmGet(url, mc)
+          .then(function (data) {
+            var pack = [null, null, null, null];
+            pack[slot] = data;
+            applyHwyExtraPack(result, pack);
+            setCached(mc, result);
+            if (mcStore[mc]) {
+              mcStore[mc].hwy = result;
+              try {
+                notifyMc(mc);
+              } catch (e) {}
+            }
+          })
+          .catch(function () {
             return null;
           })
-        : Promise.resolve(null),
-      wantSafety
-        ? gmGet(safetyUrl, mc).catch(function () {
-            return null;
-          })
-        : Promise.resolve(null),
-      wantConn
-        ? gmGet(connectionsUrl(id), mc).catch(function () {
-            return null;
-          })
-        : Promise.resolve(null),
-      wantIns
-        ? gmGet(insuranceUrl(id), mc).catch(function () {
-            return null;
-          })
-        : Promise.resolve(null)
-    ])
-      .then(function (pack) {
-        applyHwyExtraPack(result, pack);
-        setCached(mc, result);
-        if (mcStore[mc]) {
-          mcStore[mc].hwy = result;
-          try {
-            notifyMc(mc);
-          } catch (e) {}
-        }
-        return result;
-      })
+      );
+    }
+    runExtra(wantDetail, detailUrl, 0);
+    runExtra(wantSafety, safetyUrl, 1);
+    runExtra(wantConn, connectionsUrl(id), 2);
+    runExtra(wantIns, insuranceUrl(id), 3);
+    hwyExtrasInflight[mc] = Promise.all(jobs)
       .catch(function () {
         return result;
       })
-      .then(function (out) {
+      .then(function () {
+        setCached(mc, result);
         delete hwyExtrasInflight[mc];
-        return out;
+        return result;
       });
     return hwyExtrasInflight[mc];
   }
@@ -2161,6 +2011,7 @@
         };
         applyHwyExtras(result, best);
         applyHwyConn(result, best);
+        if (best.id) loadHwyExtras(mc, best.id, result);
         setCached(mc, result);
         if (mcStore[mc]) {
           mcStore[mc].hwy = result;
@@ -2168,7 +2019,6 @@
             notifyMc(mc);
           } catch (e0) {}
         }
-        if (best.id) loadHwyExtras(mc, best.id, result);
         return result;
       })
       .catch(function (err) {
@@ -2408,8 +2258,10 @@
       addPill(c411Hit, 'hwy-mc-wait', '…', 'Looking up Carrier411');
       return;
     }
-    if (state.fg.login || state.fg.needTab) {
-      addPill(c411Hit, 'hwy-mc-wait', 'Log in', 'Log in to Carrier411');
+    if (state.fg.login) {
+      addPill(c411Hit, 'hwy-mc-wait', 'Login', 'Login to Carrier411');
+      var loginLogo = c411Hit.querySelector('.hwy-mc-logo');
+      if (loginLogo) bindHoverTip(loginLogo, 'Login to Carrier411');
       return;
     }
     if (state.fg.error) {
@@ -2716,13 +2568,12 @@
       ev.preventDefault();
       ev.stopPropagation();
       markC411Clicked(mc);
-      if (!st.fg || st.fg.login || st.fg.error || st.fg.needTab) {
+      if (!st.fg || st.fg.login || st.fg.error) {
         st._gotFg = false;
         st.fg = null;
         ensureMc(mc);
       }
       var url = C411_URL + encodeURIComponent(docketFromMc(mc));
-      requestOpenC411(mc);
       window.open(url, '_blank', 'noopener,noreferrer');
     }
     function paint() {
@@ -2802,7 +2653,6 @@
       if (mode === 'inline' || first) bindChipPaint(w, mc);
       else stripChips(w);
     }
-    if (mode === 'inline') return;
     schedulePaintBar();
   }
   function makeWrap(fullMatch, mc, opts) {
@@ -3050,7 +2900,6 @@
       ev.preventDefault();
       ev.stopPropagation();
       markC411Clicked(mc);
-      requestOpenC411(mc);
       window.open(C411_URL + encodeURIComponent(docketFromMc(mc)), '_blank', 'noopener,noreferrer');
     });
     paintC411Pills(c411Hit, st, mc, false);
@@ -4422,7 +4271,7 @@
       return;
     }
     if (/carrier411\.com$/i.test(location.hostname) || location.hostname.indexOf('carrier411.com') >= 0) {
-      startC411Worker();
+      startC411PageHint();
       return;
     }
     if (!document.body) {
