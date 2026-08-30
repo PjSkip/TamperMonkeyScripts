@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail Highway Carrier411 MC badges
 // @namespace    shipsierra.highway.gmail
-// @version      1.18.13
+// @version      1.18.14
 // @description  Highway and Carrier411 carrier info next to MC numbers in Gmail.
 // @author       Ivan Karpenko
 // @copyright    2026, ShipSierra.com (Ivan Karpenko)
@@ -37,7 +37,7 @@
   var CACHE_KEY = 'hwy_mc_cache_v10';
   var C411_CACHE_KEY = 'c411_fg_cache_v1';
   var SETTINGS_KEY = 'hwy_c411_badge_settings_v3';
-  var SCRIPT_VERSION = '1.18.13';
+  var SCRIPT_VERSION = '1.18.14';
   var SCRIPT_TITLE = 'ShipSierra.com Carrier Check on Hwy/C411';
   var RELEASE_DATE = 'August 30, 2026';
   var ORG_MC_KEY = 'ss_org_mc';
@@ -3180,9 +3180,15 @@
       return;
     }
     var msgs = expandedMessages(root);
+    var wrapList = root.querySelectorAll('.hwy-mc-wrap[data-hwy-mc]');
+    var wi;
+    for (wi = 0; wi < wrapList.length; wi++) {
+      var wrapMsg = messageRoot(wrapList[wi]);
+      if (wrapMsg && msgs.indexOf(wrapMsg) < 0) msgs.push(wrapMsg);
+    }
     if (!msgs.length) {
-      var wrapMsg = root.querySelector('.hwy-mc-wrap');
-      var fromWrap = wrapMsg && (wrapMsg.closest('.h7') || wrapMsg.closest('.adn') || wrapMsg.closest('.gs'));
+      var wrapOnly = root.querySelector('.hwy-mc-wrap');
+      var fromWrap = wrapOnly && messageRoot(wrapOnly);
       if (fromWrap) msgs = [fromWrap];
     }
     var keep = [];
