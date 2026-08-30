@@ -1,14 +1,15 @@
 // ==UserScript==
 // @name         Gmail Highway Carrier411 MC badges
 // @namespace    shipsierra.highway.gmail
-// @version      1.17.16
+// @version      1.18.8
 // @description  Highway and Carrier411 carrier info next to MC numbers in Gmail.
 // @author       Ivan Karpenko
+// @copyright    2026, ShipSierra.com (Ivan Karpenko)
+// @license      Proprietary. Copyright (c) 2026 ShipSierra.com. All rights reserved. Copying or redistribution is not allowed.
 // @homepageURL  https://github.com/PjSkip/TamperMonkeyScripts
 // @updateURL    https://raw.githubusercontent.com/PjSkip/TamperMonkeyScripts/main/GmailHighwayCarrier411MCBadges.user.js
 // @downloadURL  https://raw.githubusercontent.com/PjSkip/TamperMonkeyScripts/main/GmailHighwayCarrier411MCBadges.user.js
 // @match        https://mail.google.com/*
-// @match        https://inbox.google.com/*
 // @match        https://www.carrier411.com/*
 // @match        https://carrier411.com/*
 // @match        https://highway.com/broker/carriers/*
@@ -23,15 +24,40 @@
 // @run-at       document-idle
 // ==/UserScript==
 
+/**
+ * Copyright (c) 2026 ShipSierra.com. All rights reserved.
+ * Developer: Ivan Karpenko.
+ * Copying, modification, or redistribution of this source is not allowed.
+ */
+
 (function () {
   'use strict';
   var IGNORE_MC = { '137469': true };
   var IGNORE_DOT = { '3192183': true };
-  var CACHE_KEY = 'hwy_mc_cache_v9';
+  var CACHE_KEY = 'hwy_mc_cache_v10';
   var C411_CACHE_KEY = 'c411_fg_cache_v1';
   var SETTINGS_KEY = 'hwy_c411_badge_settings_v3';
+  var SCRIPT_VERSION = '1.18.8';
+  var SCRIPT_TITLE = 'ShipSierra.com Carrier Check on Hwy/C411';
+  var RELEASE_DATE = 'August 29, 2026';
+  var ORG_MC_KEY = 'ss_org_mc';
+  var NOTES_VER_KEY = 'ss_notes_ver';
+  var ORG_SIG_OK_KEY = 'ss_org_sig_ok';
+  var ORG_SIG_ACK_KEY = 'ss_org_sig_ack';
+  var CALLOUT_BG = '#fff6d9';
+  var CARET_PX = 11;
+  var RELEASE_NOTES =
+    '• Auto insurance badge is Auto $1m, not Auto INS.\n' +
+    '• Highway icon retries only when stuck, not when results exist.\n' +
+    '• No Connect hover: Not connected on Highway.\n' +
+    '• Cargo / Auto / GL from Highway COI; off by default.\n' +
+    '• Freight loss: C411 toggle, on, only if reported.\n' +
+    '• Default is Bar only. Settings panel is a soft gray.\n' +
+    '• Copy MC, or name + MC + DOT, from bar icons.\n' +
+    '• Click a rate under $50,000 to copy MC + rate.';
   var HWY_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAHGSURBVHgB7ZZNTsJQEMdnWqWwqwsjyx5BtxJjOQF6AnoDuYF4MkgMuhRPQNlh3LCyBdOOry2B8j4LYWd/m5fMTOf937yPKUBNzX8HTQHRpD1EpGfOPG3eft2UDfHb1YwNXtlGhC+tzmIIGiwwKUTqC0aCucT2KSRHegIDWgHRa9sHblWFKgh5UwqijQDcTY7jBICdBgpPCBVE5RPY+iooBUSjtoeAfZmPEpwK8xMuFal8GrkuHCoAGuCrXLaVCJPZkExlsdk2rBwngEMFIKTK0jU638JkiWWrKpDRU88jYT25vE7R+gA1ocLuqT5g29Zt3S3GvP1MFpwgDgwPhAcHgjY9sGHM26VbwA7fPZwYtqC+7DAKAtjLF8ARKzSRHcYfp+WDSYD05TsRtuRg7211fvcdmoGeUO0iVmJ0QYOzWl1gd7m9MfuHsAEBGLAofZRdw4zonS2A9AuIG80BG4bbfGVnlfKfr39Dla8Zx7q3oJiQa1BbAcrGU4Lt17JcPsGf+0grgm9QuwqoG0/54xDMQcaYcoPKBegaD5d8bowBrBCza1BFBTSNZz+3eXVphSqVG5RV5E2Nfy4bQmNEBZEbelBTU8P4A46qjYFyL5/4AAAAAElFTkSuQmCC';
   var C411_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAC1UlEQVR4nMSWTUwTQRTHZ5cWqkAopAoVFA2CihEwaow1ICSGg0D0oKLx4MFEL3Iw4SAYY4gQ4sfJePOgXvwIEBWDMR4Uw4cGjdHwWTCBgBJaU8XWUtvd7vp/W7M0bS3hsOs7/Dp9b2by/pl5b9ZQd+sUY2xi1s7+bUFRjvJIbCnLz9oE8kxjM3yeG8cPx3Mxw6FMOSUNn/83aE23gmvSc0D3ghu0fx0FjXxixFr7LPm1VxA/LAZFcNv6ErDlxDUw2ZQaMcfrIx2tbc1gz3A3bcovbqu5Au5AS2nMgBAQwMrt1WD9wQvgT28AvN7eC844f4A5Gcng6ard4LqsdPBqB+l4NvAUTOATdFJQFifc1dgNTjt/gYdbO0DB71ejkt+rju+erwVL8rPBo601oMvjYrrcoqgCCIp0cyqLq5V/FG560E9+iWqCNxrJLfgolkD5ZaaZwK7+IVVBedF+sK33vi4KuOgS5qjzZJqzVMebiTkwxUBTZUVfqBPJEs0szKWZVbZC0PGdTiV1BdWKLMvsf1Uyp+KvyXLMxaFTsVrSGNU8jc0ppsUNlOT1OAMuLKMg5SITR78Mqf4jtnyw8+2Ymlgor2yLGaw/VgG2vfwA7tycCzrm6cx4TpdKNsjKnQkI1GdKt5SDeavpJbIV7FMnXay1gdMO6j/vxmYUH2UmiKT1Sc8gWLO3GPT4PGDnQDtoMq5keigI9byGQ01gxdbKiPCUc1Id3z5HtT00+Q3sG5kCC9dawNKiDeqcszfPgEmJdJdkpVq076YuN2WUkWqJGS67RG+ZOTkDPL7nJLhj4y6wwEp1Oz47Ar6fGADv9d4BA8orEm7aK5CjqtS9MA82P6JXbHD6U0RUFMSYGxk4Y0y/vgpeDb8Abzy/AgbEAFu+SVGLtFcgKR3x8uNGsM/+GkwyGJdcFhTiRaWwL1ftFTQ8rGN0Wz6y5ZskcHGieauoB2uu4A8AAAD//1ZDwTcAAAAGSURBVAMARiLtUypmc+4AAAAASUVORK5CYII=';
+  var SET_LOGO = 'data:image/png;base64,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';
   var SEARCH_URL = 'https://highway.com/broker/carriers/search-results?q=';
   var C411_URL = 'https://www.carrier411.com/manager/companydetail.cfm?docket=';
   var API_SEARCH_BASE =
@@ -59,14 +85,16 @@
     units: { label: 'Power units', source: 'Highway equipment_portfolio.total_observed_power_units' },
     safety: { label: 'Safety (BASIC)', source: 'Highway sms_basics.unsafe_driving_measure (Unsafe Driving)' },
     alerts: { label: 'Identity alerts (ID OK / DB)', source: 'Highway identity_alerts — open alerts and type' },
-    cargo: { label: 'Cargo insurance (C.INS 250k)', source: 'Highway COI cargo coverage limit' },
-    bipd: { label: 'Auto liability (BIPD 1M)', source: 'Highway COI auto / BIPD coverage limit' },
+    cargo: { label: 'Cargo Insurance', source: 'Highway active motor truck cargo policy limit' },
+    bipd: { label: 'Auto INS', source: 'Highway active automobile liability limit' },
+    gl: { label: 'Gen Liab Ins', source: 'Highway active commercial general liability aggregate limit' },
     connection: { label: 'Connected / No Connect', source: 'Yellow Connected only if Highway status is onboarded/connected. Any other status (Connect, connecting, none) is a red No Connect pill.' },
     dnu: { label: 'Do Not Use (DNU)', source: 'Highway Do Not Use switch (connection.status do_not_dispatch)' },
     domain: { label: 'Email domain match', source: 'Green check: exact Highway email, or same unique company domain. Public (Gmail/Yahoo/iCloud): Unmatched (yellow) if Highway has that brand but a different address; Bad email (red) if Highway does not. Unique domain with no match: Domain NOT Match (red).' }
   };
   var C411_FIELD_META = {
     fg: { label: 'FreightGuard (FG 8/12/26)', source: 'Carrier411 Reported Items date' },
+    loss: { label: 'Freight loss', source: 'Carrier411 unjustified loss of freight. Shown only when reported.' },
     rating: { label: 'Safety rating (SAT/COND/UNSAT)', source: 'Carrier411 Safety Rating' },
     related: { label: 'Related companies (Related cos)', source: 'Carrier411 “Related companies detected” on the company page' }
   };
@@ -75,8 +103,7 @@
     '.hwy-mc-wrap{display:inline-block;white-space:nowrap;vertical-align:middle;}' +
       '.hwy-mc-link{color:#1a73e8;text-decoration:underline;font-weight:600;cursor:pointer;' +
       '-webkit-user-select:text;user-select:text;}' +
-      '.hwy-mc-copied{display:inline-block;margin:0 2px 0 4px;color:#15803d;font-weight:800;font-size:13px;vertical-align:middle;}' +
-      '.hwy-mc-badges,.hwy-mc-badges *,.hwy-mc-copied{' +
+      '.hwy-mc-badges,.hwy-mc-badges *{' +
       '-webkit-user-select:none !important;user-select:none !important;}' +
       '.hwy-mc-badges{display:inline-flex;align-items:center;gap:5px;margin:0 0 0 6px;vertical-align:middle;}' +
       '.hwy-mc-box{display:inline-flex;align-items:center;gap:5px;margin:0;padding:2px 7px 2px 6px;vertical-align:middle;' +
@@ -105,11 +132,9 @@
       'display:inline-flex;align-items:center;justify-content:center;position:relative;margin:0;' +
       'background:transparent;border:0;padding:0;outline:none;z-index:auto;box-sizing:border-box;color:#5f6368;}' +
       '#ss-hwy-c411-set-btn:hover{background:rgba(60,64,67,.08);}' +
-      '#ss-hwy-c411-set-btn .ss-set-gear{display:block;width:24px;height:24px;}' +
-      '#ss-hwy-c411-set-btn img{position:absolute;left:50%;top:50%;width:12px;height:12px;margin:0;' +
-      'transform:translate(-50%,-50%);pointer-events:none;border-radius:2px;}' +
+      '#ss-hwy-c411-set-btn .ss-set-icon{display:block;width:32px;height:32px;pointer-events:none;object-fit:contain;}' +
       '.ss-intel-host{display:block;margin:1px 0 0;padding:0;text-align:right;max-width:100%;}' +
-      'tr.ss-intel-tr td{padding:0 calc(2px + var(--ss-time-pad, 0px)) 1px 0 !important;text-align:right !important;vertical-align:top;' +
+      'tr.ss-intel-tr td{padding:7px calc(2px + var(--ss-time-pad, 0px)) 1px 0 !important;text-align:right !important;vertical-align:top;' +
       'border:0 !important;outline:none !important;box-shadow:none !important;width:100% !important;}' +
       '.ss-intel-msg{display:inline-flex;flex-direction:column;align-items:flex-end;gap:0;width:auto;max-width:100%;' +
       'box-sizing:border-box;margin:0 0 0 auto !important;padding:0;float:right !important;' +
@@ -122,14 +147,46 @@
       '.ss-intel-msg .ss-intel-card.ss-warn{background:#fffbeb !important;border-color:#e2e8f0 !important;}' +
       '.ss-intel-msg .ss-intel-row{display:inline-flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:4px;margin:0;}' +
       '.ss-intel-msg .ss-intel-name{font-weight:800;font-size:11px;}' +
-      '.ss-copy-btn{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;padding:0;margin:0 1px 0 2px;' +
+      '.ss-copy-btn{display:inline-flex;align-items:center;justify-content:center;box-sizing:content-box;' +
+      'width:16px;height:18px;padding:3px 8px 3px 10px;margin:0 1px 0 -4px;' +
       'border:0;background:transparent;color:#5f6368;cursor:pointer;flex:none;vertical-align:middle;line-height:0;' +
       'transition:color .12s ease,transform .12s ease;}' +
       '.ss-copy-btn:hover{color:#1a73e8;}' +
       '.ss-copy-btn.ss-copied{color:#15803d;}' +
       '.ss-copy-btn.ss-copied svg{animation:ss-copy-pop .28s ease;}' +
       '@keyframes ss-copy-pop{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}' +
-      '.ss-intel-msg .ss-intel-mc{color:#1a73e8;font-weight:700;cursor:pointer;}' +
+      '.ss-intel-msg .ss-intel-mc{color:#1a73e8;font-weight:700;cursor:default;}' +
+      '.ss-rate-wrap{color:#1a73e8;font-weight:700;text-decoration:underline;cursor:pointer;' +
+      '-webkit-user-select:text;user-select:text;}' +
+      '.ss-notes-pill{margin-left:8px;padding:1px 8px;border-radius:999px;border:1px solid #dadce0;background:#eef3fb;' +
+      'color:#1a73e8;font:600 11px/18px inherit;cursor:pointer;flex:none;}' +
+      '.ss-notes-pill:hover{background:#d3e3fd;}' +
+      '.ss-org-box{margin:10px 4px 8px;padding:10px 10px 8px;border:1px solid #c5ced6;border-radius:10px;background:#e6ebf0;}' +
+      '.ss-org-box p{margin:0 0 8px;font-size:12px;line-height:1.4;color:#5f6368;}' +
+      '.ss-org-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}' +
+      '.ss-org-row b{font-size:13px;}' +
+      '.ss-org-mc{width:88px;padding:5px 8px;border:1px solid #dadce0;border-radius:6px;font:13px inherit;background:#fff;}' +
+      '.ss-org-warn{margin:6px 0 0;font-size:12px;color:#b45309;}' +
+      '.ss-org-err{margin:6px 0 0;font-size:12px;color:#b91c1c;}' +
+      '.ss-org-ok{margin-left:6px;padding:4px 10px;border:0;border-radius:6px;background:#1a73e8;color:#fff;font:600 12px inherit;cursor:pointer;}' +
+      '.ss-org-no{margin-left:4px;padding:4px 8px;border:1px solid #dadce0;border-radius:6px;background:#fff;font:12px inherit;cursor:pointer;}' +
+      '#ss-ss-callout{position:fixed;z-index:2147483646;width:380px;max-width:calc(100vw - 24px);box-sizing:border-box;' +
+      'padding:14px 16px 14px;background:' +
+      CALLOUT_BG +
+      ';color:#202124;border:1px solid #e8c547;border-radius:10px;' +
+      'box-shadow:0 8px 28px rgba(15,23,42,.22);font:13px/1.4 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;}' +
+      '#ss-ss-callout .ss-co-x{position:absolute;top:6px;right:6px;width:28px;height:28px;border:0;border-radius:50%;' +
+      'background:#f4e4a8;cursor:pointer;font-size:16px;line-height:28px;color:#3c4043;}' +
+      '#ss-ss-callout h4{margin:0 34px 6px 0;font-size:13px;line-height:1.35;font-weight:800;white-space:nowrap;}' +
+      '#ss-ss-callout .ss-co-ver{margin:0 34px 8px 0;font-size:12px;font-weight:700;color:#92400e;}' +
+      '#ss-ss-callout .ss-co-body{white-space:pre;color:#3c4043;font-size:12px;line-height:1.45;}' +
+      '#ss-ss-callout .ss-co-caret{position:absolute;width:0;height:0;border:' +
+      CARET_PX +
+      'px solid transparent;}' +
+      '#ss-ss-callout .ss-co-field{display:flex;align-items:center;gap:6px;margin-top:10px;}' +
+      '#ss-ss-callout .ss-co-field input{width:100px;padding:5px 8px;border:1px solid #dadce0;border-radius:6px;font:13px inherit;background:#fff;}' +
+      '#ss-ss-callout .ss-co-go{margin-top:10px;padding:6px 12px;border:0;border-radius:6px;background:#1a73e8;color:#fff;font:600 12px inherit;cursor:pointer;}' +
+      '#ss-ss-callout .ss-co-err{margin-top:6px;color:#b91c1c;font-size:12px;}' +
       '.ss-intel-msg .ss-intel-note{color:#9b1b30;font-weight:700;font-size:10px;}' +
       '.ss-intel-msg .ss-intel-pills{display:inline-flex;flex-wrap:wrap;justify-content:flex-start;gap:3px;align-items:center;margin:0;min-width:0;}' +
       '.ss-intel-msg .hwy-mc-hit,.ss-intel-msg .hwy-c411-hit{display:inline-flex;align-items:center;gap:3px;flex-wrap:wrap;min-width:0;}' +
@@ -139,24 +196,23 @@
       '#ss-hwy-c411-panel{position:fixed !important;top:0 !important;right:0 !important;bottom:0 !important;left:auto !important;' +
       'width:360px !important;max-width:92vw !important;height:100vh !important;height:100dvh !important;' +
       'margin:0 !important;border:0 !important;padding:0 !important;transform:none !important;' +
-      'z-index:2147483647 !important;background:#fff !important;color:#202124 !important;' +
+      'z-index:2147483647 !important;background:#d8dee5 !important;color:#202124 !important;' +
       'box-shadow:-8px 0 28px rgba(15,23,42,.22) !important;display:flex !important;flex-direction:column !important;' +
       'font:13px/1.35 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif !important;' +
       'visibility:visible !important;opacity:1 !important;pointer-events:auto !important;overflow:hidden !important;}' +
       '#ss-hwy-c411-panel:not(.ss-open){right:-380px !important;}' +
-      '#ss-hwy-c411-panel.ss-open,#ss-hwy-c411-panel:popover-open{right:0 !important;inset:0 0 0 auto !important;}' +
-      '#ss-hwy-c411-panel .ss-set-head{display:flex;align-items:center;gap:8px;padding:12px 12px 10px;border-bottom:1px solid #e8eaed;}' +
-      '#ss-hwy-c411-panel .ss-set-head img{width:16px;height:16px;border-radius:3px;}' +
+      '#ss-hwy-c411-panel.ss-open{right:0 !important;inset:0 0 0 auto !important;}' +
+      '#ss-hwy-c411-panel .ss-set-head{display:flex;align-items:center;gap:8px;padding:12px 12px 10px;border-bottom:1px solid #c5ced6;background:#cfd6de;}' +
       '#ss-hwy-c411-panel .ss-set-title{font-weight:700;font-size:14px;flex:1;}' +
-      '#ss-hwy-c411-panel .ss-set-close{width:28px;height:28px;border:0;background:#f1f3f4;border-radius:50%;cursor:pointer;font-size:16px;line-height:28px;color:#3c4043;}' +
-      '#ss-hwy-c411-panel .ss-set-close:hover{background:#e8eaed;}' +
-      '#ss-hwy-c411-panel .ss-set-search{margin:10px 12px 8px;padding:8px 10px;border:1px solid #dadce0;border-radius:8px;width:auto;font:13px/1.3 inherit;}' +
+      '#ss-hwy-c411-panel .ss-set-close{width:28px;height:28px;border:0;background:#c2cad3;border-radius:50%;cursor:pointer;font-size:16px;line-height:28px;color:#3c4043;}' +
+      '#ss-hwy-c411-panel .ss-set-close:hover{background:#b5bec7;}' +
+      '#ss-hwy-c411-panel .ss-set-search{margin:10px 12px 8px;padding:8px 10px;border:1px solid #cdd5dc;border-radius:8px;width:auto;font:13px/1.3 inherit;background:#fff;}' +
       '#ss-hwy-c411-panel .ss-set-body{flex:1 1 auto;overflow:auto;padding:8px;min-height:240px;}' +
-      '#ss-hwy-c411-panel .ss-set-sec{margin:10px 4px 6px;padding:8px 8px 6px;border:1px solid #e8eaed;border-radius:10px;background:#fafbfc;}' +
+      '#ss-hwy-c411-panel .ss-set-sec{margin:10px 4px 6px;padding:8px 8px 6px;border:1px solid #c5ced6;border-radius:10px;background:#e6ebf0;}' +
       '#ss-hwy-c411-panel .ss-set-sec h3{display:flex;align-items:center;gap:6px;margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#5f6368;}' +
       '#ss-hwy-c411-panel .ss-set-sec h3 img{width:14px;height:14px;border-radius:3px;}' +
       '#ss-hwy-c411-panel .ss-set-row{display:flex !important;align-items:center;gap:8px;padding:8px 6px;border-radius:6px;cursor:pointer;min-height:36px;color:#202124;font-size:13px;line-height:1.3;}' +
-      '#ss-hwy-c411-panel .ss-set-row:hover{background:#eef2f6;}' +
+      '#ss-hwy-c411-panel .ss-set-row:hover{background:#d0d8e0;}' +
       '#ss-hwy-c411-panel .ss-set-row.ss-hidden-row{display:none !important;}' +
       '#ss-hwy-c411-panel .ss-set-grip{color:#9aa0a6;font-size:14px;letter-spacing:-1px;user-select:none;cursor:grab;}' +
       '#ss-hwy-c411-panel .ss-set-check{width:18px;height:18px;flex:none;border:2px solid #5f6368;border-radius:4px;background:#fff;color:#fff;text-align:center;font:700 12px/14px sans-serif;box-sizing:border-box;}' +
@@ -166,11 +222,10 @@
       '#ss-hwy-c411-panel .ss-set-extra{flex:1 1 100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:2px 0 4px 42px;font-size:12px;color:#5f6368;cursor:default;}' +
       '#ss-hwy-c411-panel .ss-set-nlab{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;cursor:default;}' +
       '#ss-hwy-c411-panel .ss-set-num{width:58px;padding:3px 6px;border:1px solid #dadce0;border-radius:6px;font:12px/1.2 inherit;background:#fff;color:#202124;}' +
-      '#ss-hwy-c411-shade{position:fixed;inset:0;z-index:2147483646;background:rgba(15,23,42,.12);display:none;}' +
+      '#ss-hwy-c411-shade{position:fixed;inset:0;z-index:2147483646;background:rgba(15,23,42,.18);display:none;}' +
       '#ss-hwy-c411-shade.ss-open{display:block;}'
   );
 
-  /* ---test-export-start--- */
   function digits(s) {
     return String(s || '').replace(/\D/g, '');
   }
@@ -179,8 +234,27 @@
     if (!d) return '';
     return String(Number(d));
   }
+  function loadOrgMc() {
+    try {
+      var n = normMc(GM_getValue(ORG_MC_KEY, '') || '');
+      return n || '';
+    } catch (e) {
+      return '';
+    }
+  }
+  function saveOrgMc(mc) {
+    var n = normMc(mc);
+    try {
+      GM_setValue(ORG_MC_KEY, n);
+      if (n) GM_setValue(ORG_SIG_OK_KEY, '');
+    } catch (e) {}
+    return n;
+  }
   function shouldIgnore(mc) {
-    return !!(IGNORE_MC[mc] || IGNORE_DOT[mc]);
+    if (!mc) return false;
+    if (IGNORE_MC[mc] || IGNORE_DOT[mc]) return true;
+    var org = loadOrgMc();
+    return !!(org && org === mc);
   }
   function copyMcText(mc) {
     var n = normMc(mc);
@@ -282,7 +356,8 @@
   }
   function defaultSettings() {
     return {
-      ui: 'both',
+      ui: 'bar',
+      layoutVer: 1,
       hwy: [
         { id: 'assessment', on: true },
         { id: 'units', on: true },
@@ -290,12 +365,14 @@
         { id: 'alerts', on: true },
         { id: 'cargo', on: false },
         { id: 'bipd', on: false },
+        { id: 'gl', on: false },
         { id: 'connection', on: true },
         { id: 'dnu', on: true },
         { id: 'domain', on: true }
       ],
       c411: [
         { id: 'fg', on: true },
+        { id: 'loss', on: true },
         { id: 'rating', on: false },
         { id: 'related', on: false }
       ],
@@ -327,9 +404,13 @@
       });
       return ordered;
     }
-    var ui = saved.ui === 'bar' || saved.ui === 'inline' || saved.ui === 'both' ? saved.ui : 'both';
+    var ui;
+    if (!saved.layoutVer) ui = 'bar';
+    else if (saved.ui === 'bar' || saved.ui === 'inline' || saved.ui === 'both') ui = saved.ui;
+    else ui = 'bar';
     return {
       ui: ui,
+      layoutVer: 1,
       hwy: merge(d.hwy, saved.hwy),
       c411: merge(d.c411, saved.c411),
       thresh: mergeThresh(saved.thresh)
@@ -376,18 +457,17 @@
   function moneyShort(n) {
     var v = Number(n);
     if (!isFinite(v) || v < 0) return null;
-    if (v === 0) return '0';
+    if (v === 0) return '$0';
     if (v >= 1000000) {
       var m = v / 1000000;
       var ms = m % 1 === 0 ? String(m) : String(Math.round(m * 10) / 10);
-      return ms.replace(/\.0$/, '') + 'M';
+      return '$' + ms.replace(/\.0$/, '') + 'm';
     }
     if (v >= 1000) {
-      var k = v / 1000;
-      var ks = k % 1 === 0 ? String(k) : String(Math.round(k));
-      return ks + 'k';
+      var k = Math.round(v / 1000);
+      return '$' + k + 'k';
     }
-    return String(Math.round(v));
+    return '$' + Math.round(v);
   }
   function cargoPill(amount) {
     if (amount == null || amount === '') return null;
@@ -395,7 +475,7 @@
     if (s == null) return null;
     var n = Number(amount);
     return {
-      text: 'C.INS ' + s,
+      text: 'Cargo ' + s,
       cls: n > 0 ? 'hwy-mc-pass' : 'hwy-mc-fail',
       title: 'Cargo insurance ' + (n > 0 ? '$' + Number(n).toLocaleString() : 'none on file')
     };
@@ -406,9 +486,20 @@
     if (s == null) return null;
     var n = Number(amount);
     return {
-      text: 'BIPD ' + s,
+      text: 'Auto ' + s,
       cls: n >= 750000 ? 'hwy-mc-pass' : n > 0 ? 'hwy-mc-basic-mid' : 'hwy-mc-fail',
-      title: 'Auto liability (BIPD) ' + (n > 0 ? '$' + Number(n).toLocaleString() : 'none on file')
+      title: 'Auto insurance ' + (n > 0 ? '$' + Number(n).toLocaleString() : 'none on file')
+    };
+  }
+  function glPill(amount) {
+    if (amount == null || amount === '') return null;
+    var s = moneyShort(amount);
+    if (s == null) return null;
+    var n = Number(amount);
+    return {
+      text: 'Gen Liab Ins ' + s,
+      cls: n > 0 ? 'hwy-mc-pass' : 'hwy-mc-fail',
+      title: 'General liability ' + (n > 0 ? '$' + Number(n).toLocaleString() : 'none on file')
     };
   }
   function alertPill(info) {
@@ -725,7 +816,7 @@
     return s === 'do_not_dispatch' || s === 'do_not_use';
   }
   function isHwyBadgeSkipClass(cls) {
-    return /(^|\s)(hwy-mc-badges|hwy-mc-copied)(\s|$)/.test(String(cls || ''));
+    return /(^|\s)(hwy-mc-badges)(\s|$)/.test(String(cls || ''));
   }
   function stripBadgeClassChunks(html) {
     var s = String(html || '');
@@ -761,10 +852,9 @@
       }
     }
     stripOne('hwy-mc-badges');
-    stripOne('hwy-mc-copied');
+    stripOne('ss-fast-tip');
     return s.replace(/[ \t\u00a0]{2,}/g, ' ');
   }
-  /* ---test-export-end--- */
 
   var BASIC_MEASURE_KEYS = [
     ['unsafe_driving_measure', 'Unsafe Driving'],
@@ -841,13 +931,16 @@
   var settingsMem = null;
   function loadSettings() {
     if (settingsMem) return settingsMem;
+    var parsed = null;
     try {
       var raw = GM_getValue(SETTINGS_KEY, 'null');
       if (!raw || raw === 'null') raw = GM_getValue('hwy_c411_badge_settings_v2', 'null');
-      settingsMem = mergeSettings(JSON.parse(raw));
+      parsed = JSON.parse(raw);
     } catch (e) {
-      settingsMem = defaultSettings();
+      parsed = null;
     }
+    settingsMem = mergeSettings(parsed);
+    if (parsed && !parsed.layoutVer) saveSettings(settingsMem);
     return settingsMem;
   }
   function saveSettings(s) {
@@ -985,6 +1078,9 @@
     if (!hit) return true;
     if (extrasOn('hwy', ['connection', 'dnu']) && hit.connStatus === undefined) return true;
     if (extrasOn('hwy', ['domain']) && !Array.isArray(hit.emails)) return true;
+    if (extrasOn('hwy', ['cargo']) && hit.cargoAmt == null) return true;
+    if (extrasOn('hwy', ['bipd']) && hit.bipdAmt == null) return true;
+    if (extrasOn('hwy', ['gl']) && hit.glAmt == null) return true;
     if (hit.name && hit.dot == null) return true;
     return false;
   }
@@ -1009,6 +1105,7 @@
       alertTypes: data.alertTypes || null,
       cargoAmt: data.cargoAmt == null ? null : data.cargoAmt,
       bipdAmt: data.bipdAmt == null ? null : data.bipdAmt,
+      glAmt: data.glAmt == null ? null : data.glAmt,
       connStatus: data.connStatus == null ? null : data.connStatus,
       dnu: !!data.dnu,
       dnuNote: data.dnuNote || '',
@@ -1037,36 +1134,65 @@
     if (trim.charAt(0) === '{' || trim.charAt(0) === '[') return false;
     return /<html|<!doctype/i.test(trim) && /password|sign in|log in|broker\/login/i.test(text);
   }
-  function gmGet(url) {
+  var hwyAborts = {};
+  function abortHwy(mc) {
+    var list = hwyAborts[mc];
+    hwyAborts[mc] = [];
+    if (!list) return;
+    var i;
+    for (i = 0; i < list.length; i++) {
+      try {
+        if (list[i] && typeof list[i].abort === 'function') list[i].abort();
+      } catch (e) {}
+    }
+  }
+  function gmGet(url, mc) {
     return new Promise(function (resolve, reject) {
-      GM_xmlhttpRequest({
+      var settled = false;
+      function finish(fn, arg) {
+        if (settled) return;
+        settled = true;
+        fn(arg);
+      }
+      var h = GM_xmlhttpRequest({
         method: 'GET',
         url: url,
         anonymous: false,
+        timeout: 10000,
         headers: { Accept: 'application/json' },
         onload: function (res) {
           if (looksLikeHwyLogin(res)) {
-            reject(hwyLoginError());
+            finish(reject, hwyLoginError());
             return;
           }
           if (res.status < 200 || res.status >= 300) {
-            reject(new Error('HTTP ' + res.status));
+            finish(reject, new Error('HTTP ' + res.status));
             return;
           }
           try {
-            resolve(JSON.parse(res.responseText));
+            finish(resolve, JSON.parse(res.responseText));
           } catch (e) {
             if (looksLikeHwyLogin(res) || /<html|<!doctype/i.test(res.responseText || '')) {
-              reject(hwyLoginError());
+              finish(reject, hwyLoginError());
               return;
             }
-            reject(e);
+            finish(reject, e);
           }
         },
         onerror: function () {
-          reject(new Error('network'));
+          finish(reject, new Error('network'));
+        },
+        ontimeout: function () {
+          finish(reject, new Error('timeout'));
+        },
+        onabort: function () {
+          finish(reject, new Error('abort'));
         }
       });
+      if (mc && h) {
+        if (!hwyAborts[mc]) hwyAborts[mc] = [];
+        hwyAborts[mc].push(h);
+      }
     });
   }
 
@@ -1323,6 +1449,14 @@
         if (typeof applyUiMode === 'function') applyUiMode();
       } catch (e) {}
       try {
+        var ae = document.activeElement;
+        if (
+          ae &&
+          ae.classList &&
+          (ae.classList.contains('ss-set-num') || ae.classList.contains('ss-org-mc'))
+        ) {
+          return;
+        }
         if (typeof refreshPanel === 'function') refreshPanel();
       } catch (e2) {}
     });
@@ -1796,10 +1930,6 @@
       result.alerts = a.count;
       result.alertTypes = a.types || [];
     }
-    var cargo = pickCargoLimit(obj);
-    if (cargo != null) result.cargoAmt = cargo;
-    var bipd = pickBipdLimit(obj);
-    if (bipd != null) result.bipdAmt = bipd;
     var mails = collectHwyEmails(obj);
     if (mails.length) {
       var have = result.emails || [];
@@ -1836,6 +1966,54 @@
       '&page=1&per_page=5'
     );
   }
+  function insuranceUrl(id) {
+    return (
+      'https://highway.com/monitor/api/v1/insurance_policies?q%5Bcarrier_id_eq%5D=' +
+      encodeURIComponent(id) +
+      '&q%5Bstatus_eq%5D=active'
+    );
+  }
+  function policyMoney(p, prefer) {
+    var limits = (p && p.insurance_limits) || [];
+    var i;
+    var j;
+    var n;
+    for (i = 0; i < prefer.length; i++) {
+      for (j = 0; j < limits.length; j++) {
+        if (!limits[j]) continue;
+        if (String(limits[j].is_type || '') !== prefer[i]) continue;
+        n = asMoney(limits[j].value);
+        if (n != null) return n;
+      }
+    }
+    return asMoney(p && p.limit);
+  }
+  function applyHwyInsurance(result, data) {
+    var list = Array.isArray(data)
+      ? data
+      : data && Array.isArray(data.insurance_policies)
+        ? data.insurance_policies
+        : [];
+    var i;
+    var p;
+    var t;
+    var n;
+    for (i = 0; i < list.length; i++) {
+      p = list[i];
+      if (!p || String(p.status || '').toLowerCase() !== 'active') continue;
+      t = String(p.is_type || p.type || '');
+      if (t === 'motor_truck_cargo') {
+        n = policyMoney(p, ['limit']);
+        if (n != null) result.cargoAmt = n;
+      } else if (t === 'automobile_liability') {
+        n = policyMoney(p, ['combined_single_limit', 'limit']);
+        if (n != null) result.bipdAmt = n;
+      } else if (t === 'commercial_general_liability') {
+        n = policyMoney(p, ['general_aggregate', 'each_occurrence', 'limit']);
+        if (n != null) result.glAmt = n;
+      }
+    }
+  }
 
   function searchUrlExact(mc) {
     return API_SEARCH_BASE + '&q%5Bidentifiers_value_eq%5D=' + encodeURIComponent(mc);
@@ -1856,11 +2034,11 @@
   var hwyActive = 0;
   var hwyWait = [];
   function fetchHwy(mc) {
-    return gmGet(searchUrlExact(mc))
+    return gmGet(searchUrlExact(mc), mc)
       .then(function (data) {
         var best = pickCarrierByMc(data, mc);
         if (best) return best;
-        return gmGet(searchUrlPrefix(mc)).then(function (data2) {
+        return gmGet(searchUrlPrefix(mc), mc).then(function (data2) {
           return pickCarrierByMc(data2, mc);
         });
       })
@@ -1875,6 +2053,7 @@
             alertTypes: null,
             cargoAmt: null,
             bipdAmt: null,
+            glAmt: null,
             connStatus: '',
             dnu: false,
             emails: [],
@@ -1895,6 +2074,7 @@
           alertTypes: null,
           cargoAmt: null,
           bipdAmt: null,
+          glAmt: null,
           connStatus: null,
           dnu: false,
           emails: [],
@@ -1908,24 +2088,31 @@
           var safetyUrl = detailUrl + '/safety';
           var wantConn = extrasOn('hwy', ['connection', 'dnu']);
           var wantSafety = extrasOn('hwy', ['safety']);
+          var wantIns = extrasOn('hwy', ['cargo', 'bipd', 'gl']);
           return Promise.all([
-            gmGet(detailUrl).catch(function () {
+            gmGet(detailUrl, mc).catch(function () {
               return null;
             }),
             wantSafety
-              ? gmGet(safetyUrl).catch(function () {
+              ? gmGet(safetyUrl, mc).catch(function () {
                   return null;
                 })
               : Promise.resolve(null),
             wantConn
-              ? gmGet(connectionsUrl(best.id)).catch(function () {
+              ? gmGet(connectionsUrl(best.id), mc).catch(function () {
+                  return null;
+                })
+              : Promise.resolve(null),
+            wantIns
+              ? gmGet(insuranceUrl(best.id), mc).catch(function () {
                   return null;
                 })
               : Promise.resolve(null)
-          ]).then(function (pair) {
-            var detail = pair[0];
-            var safety = pair[1];
-            var conns = pair[2];
+          ]).then(function (pack) {
+            var detail = pack[0];
+            var safety = pack[1];
+            var conns = pack[2];
+            var ins = pack[3];
             if (detail) {
               result.assessment = pickAssessment(detail) || result.assessment;
               if (result.fleet == null) {
@@ -1938,6 +2125,7 @@
               if (moreDot) result.dot = moreDot;
             }
             applyHwyConn(result, conns);
+            if (ins) applyHwyInsurance(result, ins);
             var sdet = pickSafetyDetail(safety) || pickSafetyDetail(detail);
             if (sdet) {
               result.safety = sdet.value;
@@ -1963,6 +2151,7 @@
           alertTypes: null,
           cargoAmt: null,
           bipdAmt: null,
+          glAmt: null,
           connStatus: null,
           dnu: false,
           emails: [],
@@ -1972,16 +2161,21 @@
         };
       });
   }
-  function lookupMc(mc) {
-    var cached = getCached(mc);
-    if (cached) return Promise.resolve(cached);
-    if (inflight[mc]) return inflight[mc];
+  function lookupMc(mc, force) {
+    if (!force) {
+      var cached = getCached(mc);
+      if (cached) return Promise.resolve(cached);
+      if (inflight[mc]) return inflight[mc];
+    } else {
+      abortHwy(mc);
+    }
     inflight[mc] = new Promise(function (resolve) {
+      var mine = inflight[mc];
       function start() {
         hwyActive += 1;
         fetchHwy(mc).then(function (res) {
           hwyActive -= 1;
-          delete inflight[mc];
+          if (inflight[mc] === mine) delete inflight[mc];
           resolve(res);
           if (hwyWait.length) hwyWait.shift()();
         });
@@ -2027,16 +2221,23 @@
     if (fastTipEl && fastTipEl.parentNode) fastTipEl.parentNode.removeChild(fastTipEl);
     fastTipEl = null;
   }
-  function showFastTip(anchor, text, delay) {
+  function showFastTip(anchor, text, delay, force) {
     hideFastTip();
     if (!text || !anchor) return;
-    var wait = delay == null ? 160 : delay;
+    var wait = delay == null ? 0 : delay;
     function place() {
       fastTipTimer = 0;
+      if (!anchor || !anchor.isConnected) return;
+      if (!force) {
+        try {
+          if (anchor.matches && !anchor.matches(':hover')) return;
+        } catch (eHover) {}
+      }
+      var r = anchor.getBoundingClientRect();
+      if (!r.width || !r.height) return;
       if (fastTipEl && fastTipEl.parentNode) fastTipEl.parentNode.removeChild(fastTipEl);
       fastTipEl = el('div', 'ss-fast-tip', text);
       (document.documentElement || document.body).appendChild(fastTipEl);
-      var r = anchor.getBoundingClientRect();
       var tw = fastTipEl.offsetWidth || 200;
       var th = fastTipEl.offsetHeight || 40;
       var left = r.left;
@@ -2049,6 +2250,28 @@
     if (wait <= 0) place();
     else fastTipTimer = setTimeout(place, wait);
   }
+  function flashCopied(anchor, restoreTip) {
+    if (!anchor) return;
+    showFastTip(anchor, 'Copied', 0, true);
+    setTimeout(function () {
+      if (restoreTip && anchor.matches && anchor.matches(':hover')) showFastTip(anchor, restoreTip);
+      else hideFastTip();
+    }, 1400);
+  }
+  function bindHoverTip(el, text) {
+    if (!el) return el;
+    el._ssTip = text || '';
+    if (el._ssTipBound) return el;
+    el._ssTipBound = true;
+    el.addEventListener('mouseenter', function () {
+      if (el.classList && el.classList.contains('ss-copied')) return;
+      var t = el._ssTip;
+      if (typeof t === 'function') t = t();
+      if (t) showFastTip(el, t, 0);
+    });
+    el.addEventListener('mouseleave', hideFastTip);
+    return el;
+  }
   document.addEventListener('scroll', hideFastTip, true);
   function hwyCheckEl() {
     var img = document.createElement('img');
@@ -2060,16 +2283,9 @@
     img.draggable = false;
     return img;
   }
-  function addPill(parent, cls, text, title, fast) {
+  function addPill(parent, cls, text, title) {
     var p = el('span', 'hwy-mc-pill ' + cls, text);
-    if (title && fast) {
-      p.addEventListener('mouseenter', function () {
-        showFastTip(p, title);
-      });
-      p.addEventListener('mouseleave', hideFastTip);
-    } else if (title) {
-      p.title = title;
-    }
+    if (title) bindHoverTip(p, title);
     parent.appendChild(p);
     return p;
   }
@@ -2078,11 +2294,10 @@
     hwyHit.appendChild(logoImg(HWY_LOGO, 'Highway'));
     if (state.hwy && state.hwy.login) {
       addPill(hwyHit, 'hwy-mc-wait', 'Sign in', 'Sign in to Highway');
-      hwyHit.title = 'Sign in to Highway';
       return;
     }
     if (!state.hwy) {
-      addPill(hwyHit, 'hwy-mc-wait', '…');
+      addPill(hwyHit, 'hwy-mc-wait', '…', 'Looking up Highway. Click the Highway icon to retry.');
       return;
     }
     var order = loadSettings().hwy;
@@ -2117,6 +2332,9 @@
       } else if (id === 'bipd') {
         var bp = bipdPill(state.hwy.bipdAmt);
         if (bp) addPill(hwyHit, bp.cls, bp.text, bp.title);
+      } else if (id === 'gl') {
+        var gp = glPill(state.hwy.glAmt);
+        if (gp) addPill(hwyHit, gp.cls, gp.text, gp.title);
       } else if (id === 'connection') {
         if (connKind(state.hwy.connStatus) === 'connected') {
           addPill(hwyHit, 'hwy-mc-conn', 'Connected', 'Connected with this carrier on Highway');
@@ -2125,7 +2343,7 @@
             hwyHit,
             'hwy-mc-noconn',
             'No Connect',
-            'Not connected on Highway (Connect / connecting counts as not connected)'
+            'Not connected on Highway'
           );
         }
       } else if (id === 'dnu') {
@@ -2135,19 +2353,24 @@
       } else if (id === 'domain') {
         var db = domainBadge(fromAddr, state.hwy.emails || []);
         if (db) {
-          var dPill = addPill(hwyHit, db.cls, db.text, db.title, !!db.fast);
+          var dPill = addPill(hwyHit, db.cls, db.text, db.title);
           if (db.check && dPill) dPill.appendChild(hwyCheckEl());
         }
       }
     }
-    if (state.hwy.name) hwyHit.title = state.hwy.name + ' (open Highway)';
+    var hwyLogo = hwyHit.querySelector('.hwy-mc-logo');
+    if (hwyLogo) {
+      bindHoverTip(
+        hwyLogo,
+        state.hwy && state.hwy.name ? state.hwy.name + ' (open Highway)' : 'Open Highway'
+      );
+    }
   }
 
   function paintC411Pills(c411Hit, state, mc, compact) {
     c411Hit.appendChild(logoImg(C411_LOGO, 'Carrier411'));
     if (!state.fg || state.fg.login || state.fg.error || state.fg.needTab) {
       addPill(c411Hit, 'hwy-mc-wait', 'Log in', 'Log in to Carrier411');
-      c411Hit.title = 'Log in to Carrier411';
       return;
     }
     var order = loadSettings().c411;
@@ -2182,10 +2405,19 @@
         if (state.fg.related) {
           addPill(c411Hit, 'hwy-mc-fail', 'Related cos', 'Carrier411: related companies detected');
         }
+      } else if (id === 'loss') {
+        if (state.fg.loss) {
+          addPill(
+            c411Hit,
+            'hwy-mc-dnu',
+            'Freight loss',
+            'Carrier411: unjustified loss of freight reported'
+          );
+        }
       }
     }
-    if (state.fg.loss) addPill(c411Hit, 'hwy-mc-dnu', 'Freight loss', 'Carrier411: unjustified loss of freight reported');
-    c411Hit.title = 'Open Carrier411 for ' + docketFromMc(mc);
+    var c411Logo = c411Hit.querySelector('.hwy-mc-logo');
+    if (c411Logo) bindHoverTip(c411Logo, 'Open Carrier411 for ' + docketFromMc(mc));
   }
 
   var mcStore = {};
@@ -2239,11 +2471,13 @@
     return SEARCH_URL + encodeURIComponent(mc);
   }
   function ensureMc(mc) {
-    if (!mcStore[mc]) mcStore[mc] = { hwy: null, fg: null, subs: [] };
+    if (!mcStore[mc]) mcStore[mc] = { hwy: null, fg: null, subs: [], _hwyGen: 0 };
     var st = mcStore[mc];
     if (!st._gotHwy) {
       st._gotHwy = true;
+      var gen = st._hwyGen || 0;
       lookupMc(mc).then(function (info) {
+        if ((st._hwyGen || 0) !== gen) return;
         st.hwy = info || {};
         notifyMc(mc);
       });
@@ -2256,6 +2490,30 @@
       });
     }
     return st;
+  }
+  function hwyNeedsRetry(hwy) {
+    if (!hwy) return true;
+    if (hwy.login || hwy.nocache) return true;
+    var a = String(hwy.assessment || '').toLowerCase();
+    if (!a || a.indexOf('lookup') >= 0) return true;
+    return false;
+  }
+  function openHighway(mc) {
+    var url = hwyPageUrl(mc);
+    var st = mcStore[mc] || (mcStore[mc] = { hwy: null, fg: null, subs: [], _hwyGen: 0 });
+    if (hwyNeedsRetry(st.hwy)) {
+      st._hwyGen = (st._hwyGen || 0) + 1;
+      var gen = st._hwyGen;
+      st._gotHwy = true;
+      st.hwy = null;
+      notifyMc(mc);
+      lookupMc(mc, true).then(function (info) {
+        if ((st._hwyGen || 0) !== gen) return;
+        st.hwy = info || {};
+        notifyMc(mc);
+      });
+    }
+    window.open(url, '_blank', 'noopener');
   }
   var barPaintQueued = false;
   function schedulePaintBar() {
@@ -2398,12 +2656,7 @@
     function openHwy(ev) {
       ev.preventDefault();
       ev.stopPropagation();
-      if (!st.hwy || st.hwy.login || st.hwy.nocache) {
-        st._gotHwy = false;
-        st.hwy = null;
-        ensureMc(mc);
-      }
-      window.open(hwyPageUrl(mc), '_blank', 'noopener');
+      openHighway(mc);
     }
     function openC411(ev) {
       ev.preventDefault();
@@ -2416,26 +2669,16 @@
       }
       var url = C411_URL + encodeURIComponent(docketFromMc(mc));
       requestOpenC411(mc);
-      try {
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-          chrome.runtime.sendMessage({ type: 'open_c411_window', url: url }, function () {
-            if (chrome.runtime.lastError) window.open(url, '_blank', 'noopener,noreferrer');
-          });
-          return;
-        }
-      } catch (e) {}
       window.open(url, '_blank', 'noopener,noreferrer');
     }
     function paint() {
       while (hwyBox.firstChild) hwyBox.removeChild(hwyBox.firstChild);
       while (c411Box.firstChild) c411Box.removeChild(c411Box.firstChild);
       var hwyHit = el('span', 'hwy-mc-hit');
-      hwyHit.title = 'Open Highway for MC ' + mc;
       hwyHit.addEventListener('click', openHwy);
       paintHwyPills(hwyHit, st, threadCarrierAddr(wrap), false);
       hwyBox.appendChild(hwyHit);
       var c411Hit = el('span', 'hwy-c411-hit');
-      c411Hit.title = 'Open Carrier411 for ' + docketFromMc(mc);
       c411Hit.addEventListener('click', openC411);
       paintC411Pills(c411Hit, st, mc, false);
       c411Box.appendChild(c411Hit);
@@ -2514,20 +2757,12 @@
     wrap.setAttribute('data-ss-full', '0');
 
     var a = el('span', 'hwy-mc-link', fullMatch);
-    a.title = 'Click to copy MC ' + mc;
+    bindHoverTip(a, 'Copy MC');
     a.addEventListener('click', function (ev) {
       ev.preventDefault();
       ev.stopPropagation();
       clipText(copyMcText(mc));
-      var old = wrap.querySelector('.hwy-mc-copied');
-      if (old) old.parentNode.removeChild(old);
-      var check = el('span', 'hwy-mc-copied', '✓');
-      check.title = 'Copied';
-      if (a.nextSibling) wrap.insertBefore(check, a.nextSibling);
-      else wrap.appendChild(check);
-      setTimeout(function () {
-        if (check.parentNode) check.parentNode.removeChild(check);
-      }, 1600);
+      flashCopied(a, 'Copy MC');
     });
     wrap.appendChild(a);
     wrap._ssHeaderFrom = function () {
@@ -2555,7 +2790,7 @@
     if (a.indexOf('fail') >= 0 && a.indexOf('lookup') < 0) return 'ss-risk';
     if (hwy.alerts > 0) return 'ss-risk';
     if (fg && fg.hasFg) return 'ss-risk';
-    if (fg && fg.loss) return 'ss-risk';
+    if (fg && fg.loss && extrasOn('c411', ['loss'])) return 'ss-risk';
     var db = domainBadge(fromAddr, hwy.emails || []);
     if (db && db.cls === 'hwy-mc-fail') return 'ss-risk';
     if (a.indexOf('partial') >= 0 || connKind(hwy.connStatus) !== 'connected') return 'ss-warn';
@@ -2673,10 +2908,12 @@
     }
     return n;
   }
-  function copyIconBtn() {
+  function copyIconBtn(hoverLabel) {
+    var tip = hoverLabel || 'Copy';
     var b = el('button', 'ss-copy-btn');
     b.type = 'button';
-    b.setAttribute('aria-label', 'Copy');
+    b.setAttribute('aria-label', tip);
+    b._ssTip = tip;
     var svg = svgEl('svg', {
       viewBox: '0 0 24 24',
       width: '14',
@@ -2694,25 +2931,23 @@
       svgEl('path', { d: 'M16 8V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h2' })
     );
     b.appendChild(svg);
-    b.addEventListener('mouseenter', function () {
-      if (!b.classList.contains('ss-copied')) showFastTip(b, 'Copy');
-    });
-    b.addEventListener('mouseleave', hideFastTip);
+    bindHoverTip(b, tip);
     return b;
+  }
+  function flashCopyBtn(btn, hoverLabel) {
+    if (!btn) return;
+    btn.classList.add('ss-copied');
+    flashCopied(btn, hoverLabel || btn._ssTip || 'Copy');
+    setTimeout(function () {
+      btn.classList.remove('ss-copied');
+    }, 1400);
   }
   function copyCarrierToClipboard(name, mc, dot, btn) {
     clipText(carrierClipboardText(name, mc, dot));
-    if (btn) {
-      btn.classList.add('ss-copied');
-      showFastTip(btn, 'Copied!', 0);
-      setTimeout(function () {
-        btn.classList.remove('ss-copied');
-        if (btn.matches && btn.matches(':hover')) showFastTip(btn, 'Copy');
-        else hideFastTip();
-      }, 1400);
-    }
+    flashCopyBtn(btn, 'Copy Carrier + MC/DOT');
   }
   function fillMsgBar(bar, msg, mcs) {
+    hideFastTip();
     while (bar.firstChild) bar.removeChild(bar.firstChild);
     mcs.forEach(function (mc) {
       var st = ensureMc(mc);
@@ -2723,7 +2958,7 @@
       var head = el('span', 'ss-intel-row');
       var name = (st.hwy && st.hwy.name) || 'MC ' + mc;
       head.appendChild(el('span', 'ss-intel-name', name));
-      var copyBtn = copyIconBtn();
+      var copyBtn = copyIconBtn('Copy Carrier + MC/DOT');
       copyBtn.addEventListener('click', function (ev) {
         ev.preventDefault();
         ev.stopPropagation();
@@ -2731,13 +2966,15 @@
       });
       head.appendChild(copyBtn);
       var mcEl = el('span', 'ss-intel-mc', 'MC ' + mc);
-      mcEl.title = 'Copy MC ' + mc;
-      mcEl.addEventListener('click', function (ev) {
+      head.appendChild(mcEl);
+      var mcCopy = copyIconBtn('Copy MC');
+      mcCopy.addEventListener('click', function (ev) {
         ev.preventDefault();
         ev.stopPropagation();
         clipText(copyMcText(mc));
+        flashCopyBtn(mcCopy, 'Copy MC');
       });
-      head.appendChild(mcEl);
+      head.appendChild(mcCopy);
       if (st.hwy && (st.hwy.dnu || isDnuStatus(st.hwy.connStatus)) && st.hwy.dnuNote) {
         head.appendChild(el('span', 'ss-intel-note', 'DNU: ' + st.hwy.dnuNote));
       }
@@ -2747,7 +2984,7 @@
       hwyHit.addEventListener('click', function (ev) {
         ev.preventDefault();
         ev.stopPropagation();
-        window.open(hwyPageUrl(mc), '_blank', 'noopener');
+        openHighway(mc);
       });
       paintHwyPills(hwyHit, st, fromAddr, false);
       pills.appendChild(hwyHit);
@@ -2825,7 +3062,13 @@
   function isSkippable(node) {
     var eln = node.parentElement;
     if (!eln) return true;
-    if (eln.closest('.hwy-mc-wrap, .ss-intel-msg, #ss-intel-bar, #ss-hwy-c411-panel')) return true;
+    if (
+      eln.closest(
+        '.hwy-mc-wrap, .ss-rate-wrap, .ss-intel-msg, #ss-intel-bar, #ss-hwy-c411-panel, #ss-ss-callout, .ss-fast-tip'
+      )
+    ) {
+      return true;
+    }
     var tag = eln.tagName;
     if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA' || tag === 'INPUT') return true;
     if (eln.isContentEditable) return true;
@@ -2938,6 +3181,87 @@
     var maybeMc = MC_TEST.test(blob) || MC_AFTER_TEST.test(blob);
     if (root.setAttribute && (wrapped || !maybeMc)) root.setAttribute('data-ss-scanned', '1');
   }
+  function parseRateNum(raw) {
+    var n = Number(String(raw || '').replace(/,/g, ''));
+    if (!isFinite(n) || n < 100 || n >= 50000) return null;
+    return Math.round(n);
+  }
+  function findRateMatches(text) {
+    var s = String(text || '');
+    var out = [];
+    var re =
+      /\$\s*([0-9]{1,2}(?:,[0-9]{3})+|[1-9][0-9]{2,4})(?:\.\d{1,2})?|([0-9]{1,2}(?:,[0-9]{3})+|[1-9][0-9]{2,4})(?:\.\d{1,2})?\s*\$/g;
+    var m;
+    while ((m = re.exec(s))) {
+      var raw = m[1] || m[2];
+      var n = parseRateNum(raw);
+      if (n == null) continue;
+      out.push({ start: m.index, end: m.index + m[0].length, full: m[0], n: n });
+    }
+    return out;
+  }
+  function messageMcForRates(root) {
+    var msg = messageRoot(root) || root;
+    var mcs = mcsInMessage(msg);
+    var i;
+    for (i = 0; i < mcs.length; i++) {
+      if (!shouldIgnore(mcs[i])) return mcs[i];
+    }
+    var thread = openThreadRoot();
+    if (thread && thread !== msg) {
+      mcs = mcsInMessage(thread);
+      for (i = 0; i < mcs.length; i++) {
+        if (!shouldIgnore(mcs[i])) return mcs[i];
+      }
+    }
+    var subj = (thread && thread.querySelector && thread.querySelector('h2.hP')) || document.querySelector('h2.hP');
+    if (subj) {
+      var hits = findMcMatches(subj.textContent || '');
+      if (hits.length && !shouldIgnore(hits[0].mc)) return hits[0].mc;
+    }
+    return '';
+  }
+  function wrapRatesInScope(root) {
+    if (!root || !root.querySelector) return;
+    if (root.querySelector('.ss-rate-wrap')) return;
+    var mc = messageMcForRates(root);
+    if (!mc) return;
+    var quotedRoot = inQuoted(root);
+    var all = collectTextNodes(root);
+    var i;
+    for (i = 0; i < all.length; i++) {
+      var n = all[i];
+      if (!n.nodeValue || n.nodeValue.indexOf('$') < 0 && !/\d\s*\$/.test(n.nodeValue)) continue;
+      if (n.parentElement && n.parentElement.closest('.gmail_quote, .gmail_extra, .gmail_attr, .hwy-mc-wrap, .ss-rate-wrap')) {
+        continue;
+      }
+      if (quotedRoot) continue;
+      var hits = findRateMatches(n.nodeValue);
+      if (!hits.length) continue;
+      var text = n.nodeValue;
+      var last = 0;
+      var frag = document.createDocumentFragment();
+      hits.forEach(function (h) {
+        if (h.start > last) frag.appendChild(document.createTextNode(text.slice(last, h.start)));
+        var w = el('span', 'ss-rate-wrap', h.full);
+        w.setAttribute('data-ss-rate', String(h.n));
+        w.setAttribute('data-ss-rate-mc', mc);
+        (function (wrapEl, amount, mcNum) {
+          bindHoverTip(wrapEl, 'Copy MC + Rate');
+          wrapEl.addEventListener('click', function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            clipText(copyMcText(mcNum) + ' $' + amount);
+            flashCopied(wrapEl, 'Copy MC + Rate');
+          });
+        })(w, h.n, mc);
+        frag.appendChild(w);
+        last = h.end;
+      });
+      if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+      n.parentNode.replaceChild(frag, n);
+    }
+  }
   function unquotedMessageText(a3s) {
     if (!a3s) return '';
     var t = '';
@@ -3016,6 +3340,7 @@
       );
     }
     for (i = 0; i < scopes.length; i++) processScope(scopes[i]);
+    for (i = 0; i < scopes.length; i++) wrapRatesInScope(scopes[i]);
   }
 
   function pruneIdleMc(root) {
@@ -3047,6 +3372,8 @@
         pruneIdleMc(null);
       }
       injectSettingsBtn();
+      maybeShowCallout();
+      maybeCheckOrgSig();
     } catch (e) {
     } finally {
       scanning = false;
@@ -3117,11 +3444,6 @@
   }
   function unmountEl(node) {
     if (!node) return;
-    try {
-      if (typeof node.hidePopover === 'function' && node.matches && node.matches(':popover-open')) {
-        node.hidePopover();
-      }
-    } catch (e) {}
     if (node.parentNode) node.parentNode.removeChild(node);
   }
   function closePanel() {
@@ -3284,14 +3606,14 @@
     if (uiHost) {
       while (uiHost.firstChild) uiHost.removeChild(uiHost.firstChild);
       [
-        { id: 'both', lab: 'Bar + first MC chip' },
-        { id: 'bar', lab: 'Bar only (MC in body stays a link)' },
-        { id: 'inline', lab: 'Chips only (no bar)' }
+        { id: 'bar', lab: 'Bar only' },
+        { id: 'inline', lab: 'Next to MC' },
+        { id: 'both', lab: 'Bar + next to MC' }
       ].forEach(function (opt) {
         var row = el('div', 'ss-set-row');
         var box = el('span', 'ss-set-check');
         box.setAttribute('role', 'radio');
-        setCheckLook(box, s.ui === opt.id || (!s.ui && opt.id === 'both'));
+        setCheckLook(box, s.ui === opt.id || (!s.ui && opt.id === 'bar'));
         row.appendChild(box);
         row.appendChild(el('span', 'ss-set-lab', opt.lab));
         row.addEventListener('click', function (ev) {
@@ -3328,6 +3650,15 @@
 
     var head = el('div', 'ss-set-head');
     head.appendChild(el('div', 'ss-set-title', 'Carrier check'));
+    var notesPill = el('button', 'ss-notes-pill', 'Release notes');
+    notesPill.type = 'button';
+    notesPill.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      closePanel();
+      showSsCallout('notes', true);
+    });
+    head.appendChild(notesPill);
     var closer = el('button', 'ss-set-close', '×');
     closer.type = 'button';
     closer.title = 'Close';
@@ -3375,6 +3706,81 @@
     cList.id = 'ss-set-c411';
     cSec.appendChild(cList);
     body.appendChild(cSec);
+
+    var orgBox = el('div', 'ss-org-box');
+    orgBox.appendChild(
+      el(
+        'p',
+        '',
+        'Your company’s MC. We never show Highway/Carrier411 results for this number, so your own authority is not treated as a carrier you are vetting. Digits only — no “MC”.'
+      )
+    );
+    var orgRow = el('div', 'ss-org-row');
+    orgRow.appendChild(el('b', '', 'MC:'));
+    var orgInp = document.createElement('input');
+    orgInp.type = 'text';
+    orgInp.inputMode = 'numeric';
+    orgInp.className = 'ss-org-mc';
+    orgInp.maxLength = 8;
+    orgInp.value = loadOrgMc();
+    orgInp.setAttribute('aria-label', 'Your company MC number');
+    orgRow.appendChild(orgInp);
+    orgBox.appendChild(orgRow);
+    var orgMsg = el('div', '');
+    orgBox.appendChild(orgMsg);
+    var orgSaved = loadOrgMc();
+    function setOrgMsg(kind, text) {
+      orgMsg.className = kind === 'err' ? 'ss-org-err' : kind === 'warn' ? 'ss-org-warn' : '';
+      orgMsg.textContent = text || '';
+      while (orgMsg.firstChild && orgMsg.querySelector('button')) {
+        break;
+      }
+    }
+    orgInp.addEventListener('keydown', function (ev) {
+      ev.stopPropagation();
+    });
+    orgInp.addEventListener('input', function (ev) {
+      ev.stopPropagation();
+      var raw = orgInp.value.replace(/\s+/g, '');
+      if (/[^\d]/.test(raw)) {
+        setOrgMsg('err', 'Numbers only.');
+        return;
+      }
+      setOrgMsg('', '');
+      if (raw === orgSaved) return;
+      if (!raw) {
+        saveOrgMc('');
+        orgSaved = '';
+        return;
+      }
+      orgMsg.className = 'ss-org-warn';
+      orgMsg.textContent = 'Are you sure this is your MC? We will not vet this number. ';
+      var yes = el('button', 'ss-org-ok', 'Confirm');
+      yes.type = 'button';
+      var no = el('button', 'ss-org-no', 'Cancel');
+      no.type = 'button';
+      yes.addEventListener('click', function (e2) {
+        e2.preventDefault();
+        e2.stopPropagation();
+        var n = normMc(orgInp.value);
+        if (!n) {
+          setOrgMsg('err', 'Numbers only.');
+          return;
+        }
+        orgSaved = saveOrgMc(n);
+        orgInp.value = n;
+        setOrgMsg('', '');
+      });
+      no.addEventListener('click', function (e2) {
+        e2.preventDefault();
+        e2.stopPropagation();
+        orgInp.value = orgSaved;
+        setOrgMsg('', '');
+      });
+      orgMsg.appendChild(yes);
+      orgMsg.appendChild(no);
+    });
+    body.appendChild(orgBox);
     panelEl.appendChild(body);
     panelEl._hwyList = hwyList;
     panelEl._c411List = cList;
@@ -3450,16 +3856,308 @@
         if (!isPanelOpen()) return;
         if (Date.now() - lastToggle < 400) return;
         var n = ev.target;
-        if (n && n.closest && n.closest('#ss-hwy-c411-panel, #ss-hwy-c411-set-btn')) return;
+        if (n && n.closest && n.closest('#ss-hwy-c411-panel, #ss-hwy-c411-set-btn, #ss-ss-callout')) return;
         closePanel();
       },
       true
     );
   }
+  function stopCalloutFollow(n) {
+    if (!n) return;
+    if (n._ssFollow) {
+      clearInterval(n._ssFollow);
+      n._ssFollow = 0;
+    }
+    if (n._ssRO && n._ssRO.disconnect) {
+      try {
+        n._ssRO.disconnect();
+      } catch (e) {}
+      n._ssRO = null;
+    }
+    if (n._ssMO && n._ssMO.disconnect) {
+      try {
+        n._ssMO.disconnect();
+      } catch (e2) {}
+      n._ssMO = null;
+    }
+  }
+  function hideSsCallout() {
+    var n = document.getElementById('ss-ss-callout');
+    if (!n) return;
+    stopCalloutFollow(n);
+    if (n.parentNode) n.parentNode.removeChild(n);
+  }
+  function placeSsCallout(card) {
+    var gear = document.getElementById('ss-hwy-c411-set-btn');
+    if (!gear || !card) return;
+    var r = gear.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    var gx = r.left + r.width / 2;
+    var w = card.offsetWidth || 340;
+    var h = card.offsetHeight || 160;
+    var margin = 8;
+    var inset = 20;
+    var vw = document.documentElement.clientWidth || window.innerWidth;
+    var vh = document.documentElement.clientHeight || window.innerHeight;
+    var viewLeft = gx - inset;
+    if (viewLeft < margin) viewLeft = margin;
+    if (viewLeft + w > vw - margin) {
+      var clamped = vw - w - margin;
+      if (gx > clamped + 14 && gx < clamped + w - 14) viewLeft = clamped;
+    }
+    var viewTop = r.bottom + 8;
+    var below = true;
+    if (viewTop + h > vh - margin && r.top - 8 - h >= margin) {
+      viewTop = r.top - 8 - h;
+      below = false;
+    }
+    card.style.left = Math.round(viewLeft) + 'px';
+    card.style.top = Math.round(viewTop) + 'px';
+    var cardR = card.getBoundingClientRect();
+    var shiftX = viewLeft - cardR.left;
+    var shiftY = viewTop - cardR.top;
+    if (shiftX || shiftY) {
+      card.style.left = Math.round(viewLeft + shiftX) + 'px';
+      card.style.top = Math.round(viewTop + shiftY) + 'px';
+      cardR = card.getBoundingClientRect();
+    }
+    var caret = card.querySelector('.ss-co-caret');
+    if (!caret) return;
+    var half = CARET_PX;
+    var cx = Math.round(gx - cardR.left - half);
+    if (cx < 10 || cx > w - 28) {
+      var need = gx - (cardR.left + Math.max(10, Math.min(w - 28, cx)) + half);
+      card.style.left = Math.round(parseFloat(card.style.left || '0') + need) + 'px';
+      cardR = card.getBoundingClientRect();
+      cx = Math.round(gx - cardR.left - half);
+    }
+    if (cx < 10) cx = 10;
+    if (cx > w - 28) cx = w - 28;
+    caret.style.left = cx + 'px';
+    if (below) {
+      caret.style.top = '-' + (half * 2) + 'px';
+      caret.style.borderBottomColor = CALLOUT_BG;
+      caret.style.borderTopColor = 'transparent';
+    } else {
+      caret.style.top = '100%';
+      caret.style.borderTopColor = CALLOUT_BG;
+      caret.style.borderBottomColor = 'transparent';
+    }
+  }
+  function armCalloutFollow(card) {
+    function tick() {
+      if (!card || !card.parentNode) {
+        stopCalloutFollow(card);
+        return;
+      }
+      placeSsCallout(card);
+    }
+    stopCalloutFollow(card);
+    card._ssFollow = setInterval(tick, 200);
+    var wrap = document.getElementById('ss-hwy-c411-set-wrap');
+    var host = wrap && wrap.parentElement;
+    if (typeof MutationObserver === 'function' && host) {
+      card._ssMO = new MutationObserver(tick);
+      card._ssMO.observe(host, { childList: true, subtree: true });
+    }
+    if (typeof ResizeObserver === 'function' && wrap) {
+      card._ssRO = new ResizeObserver(tick);
+      card._ssRO.observe(wrap);
+      if (host) card._ssRO.observe(host);
+    }
+  }
+  function showSsCallout(kind, forceNotes) {
+    hideSsCallout();
+    var gear = document.getElementById('ss-hwy-c411-set-btn');
+    if (!gear) return;
+    var card = el('div', '');
+    card.id = 'ss-ss-callout';
+    var caret = el('div', 'ss-co-caret');
+    card.appendChild(caret);
+    var x = el('button', 'ss-co-x', '×');
+    x.type = 'button';
+    x.setAttribute('aria-label', 'Dismiss');
+    function dismissNotes() {
+      ackNotesVersion();
+      hideSsCallout();
+    }
+    if (kind === 'setup') {
+      x.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        window.__ssSetupSnooze = true;
+        hideSsCallout();
+      });
+      card.appendChild(x);
+      card.appendChild(el('h4', '', 'Your company MC'));
+      card.appendChild(
+        el(
+          'div',
+          'ss-co-body',
+          'Enter your broker MC (digits only). We will never show Highway or Carrier411 results for this number, so your own company is not treated as a carrier you are vetting.'
+        )
+      );
+      var row = el('div', 'ss-co-field');
+      row.appendChild(el('b', '', 'MC:'));
+      var inp = document.createElement('input');
+      inp.type = 'text';
+      inp.inputMode = 'numeric';
+      inp.maxLength = 8;
+      inp.setAttribute('aria-label', 'Your company MC number');
+      row.appendChild(inp);
+      card.appendChild(row);
+      var err = el('div', 'ss-co-err');
+      card.appendChild(err);
+      var go = el('button', 'ss-co-go', 'Save');
+      go.type = 'button';
+      function saveSetup() {
+        var raw = String(inp.value || '').replace(/\s+/g, '');
+        if (!raw) {
+          err.textContent = 'Enter your MC number.';
+          return;
+        }
+        if (/[^\d]/.test(raw)) {
+          err.textContent = 'Numbers only.';
+          return;
+        }
+        var n = normMc(raw);
+        if (!n) {
+          err.textContent = 'Numbers only.';
+          return;
+        }
+        saveOrgMc(n);
+        ackNotesVersion();
+        hideSsCallout();
+      }
+      go.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        saveSetup();
+      });
+      inp.addEventListener('keydown', function (ev) {
+        ev.stopPropagation();
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          saveSetup();
+        }
+      });
+      card.appendChild(go);
+    } else if (kind === 'mismatch') {
+      x.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        try {
+          GM_setValue(ORG_SIG_ACK_KEY, loadOrgMc() + ':' + (card.getAttribute('data-sig') || ''));
+        } catch (e) {}
+        hideSsCallout();
+      });
+      card.appendChild(x);
+      card.appendChild(el('h4', '', 'Company MC doesn’t match'));
+      card.appendChild(
+        el(
+          'div',
+          'ss-co-body',
+          'The MC in your email signature is not the MC saved in Carrier check settings. Update MC: in Settings if your company number changed.'
+        )
+      );
+    } else {
+      x.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        dismissNotes();
+      });
+      card.appendChild(x);
+      card.appendChild(el('h4', '', SCRIPT_TITLE));
+      card.appendChild(
+        el('div', 'ss-co-ver', 'Version ' + SCRIPT_VERSION + ' · Released ' + RELEASE_DATE)
+      );
+      card.appendChild(el('div', 'ss-co-body', RELEASE_NOTES));
+    }
+    (document.body || document.documentElement).appendChild(card);
+    placeSsCallout(card);
+    armCalloutFollow(card);
+    if (kind === 'setup') {
+      var fi = card.querySelector('input');
+      if (fi) setTimeout(function () { fi.focus(); }, 50);
+    }
+  }
+  function ackNotesVersion() {
+    window.__ssNotesAck = SCRIPT_VERSION;
+    try {
+      GM_setValue(NOTES_VER_KEY, SCRIPT_VERSION);
+    } catch (e) {}
+  }
+  function notesVersionAcked() {
+    if (window.__ssNotesAck === SCRIPT_VERSION) return true;
+    var seen = '';
+    try {
+      seen = String(GM_getValue(NOTES_VER_KEY, '') || '');
+    } catch (e) {}
+    if (seen === SCRIPT_VERSION) {
+      window.__ssNotesAck = SCRIPT_VERSION;
+      return true;
+    }
+    return false;
+  }
+  function maybeShowCallout() {
+    if (document.getElementById('ss-ss-callout')) return;
+    if (!document.getElementById('ss-hwy-c411-set-btn')) return;
+    if (!loadOrgMc()) {
+      if (window.__ssSetupSnooze) return;
+      showSsCallout('setup');
+      return;
+    }
+    if (notesVersionAcked()) return;
+    showSsCallout('notes');
+  }
+  function signatureMcOnScreen() {
+    var nodes = document.querySelectorAll('.gmail_signature, [data-smartmail="gmail_signature"]');
+    var i;
+    for (i = 0; i < nodes.length; i++) {
+      var sig = nodes[i];
+      if (!isShown(sig)) continue;
+      var compose = sig.closest && (sig.closest('[role="dialog"]') || sig.closest('.M9') || sig.closest('.aoI'));
+      var msg = messageRoot(sig);
+      var from = msg ? messageFromAddr(msg) : '';
+      if (!compose && !isSelfOrCoworkerAddr(from)) continue;
+      var hits = findMcMatches(sig.innerText || sig.textContent || '');
+      if (hits.length) return hits[0].mc;
+    }
+    return '';
+  }
+  var lastSigCheck = 0;
+  function maybeCheckOrgSig() {
+    var now = Date.now();
+    if (now - lastSigCheck < 4000) return;
+    lastSigCheck = now;
+    var org = loadOrgMc();
+    if (!org) return;
+    if (document.getElementById('ss-ss-callout')) return;
+    var sigMc = signatureMcOnScreen();
+    if (!sigMc) return;
+    if (sigMc === org) {
+      try {
+        GM_setValue(ORG_SIG_OK_KEY, org);
+      } catch (e) {}
+      return;
+    }
+    var ack = '';
+    try {
+      ack = String(GM_getValue(ORG_SIG_ACK_KEY, '') || '');
+    } catch (e2) {}
+    if (ack === org + ':' + sigMc) return;
+    showSsCallout('mismatch');
+    var card = document.getElementById('ss-ss-callout');
+    if (card) card.setAttribute('data-sig', sigMc);
+  }
+
+  function pinOpenCallout() {
+    var co = document.getElementById('ss-ss-callout');
+    if (co) placeSsCallout(co);
+  }
   function injectSettingsBtn() {
     bindSettingsClicks();
     var existing = document.getElementById('ss-hwy-c411-set-wrap');
-    if (existing && existing.isConnected) return true;
+    if (existing && existing.isConnected && existing.querySelector('img.ss-set-icon')) {
+      pinOpenCallout();
+      return true;
+    }
     var slot = findSettingsSlot();
     if (!slot || !slot.parent || !slot.before) return false;
     var wrap = document.getElementById('ss-hwy-c411-set-wrap');
@@ -3468,7 +4166,8 @@
       wrap.isConnected &&
       wrap.parentNode === slot.parent &&
       wrap.nextElementSibling === slot.before &&
-      !wrap.contains(slot.before)
+      !wrap.contains(slot.before) &&
+      wrap.querySelector('img.ss-set-icon')
     ) {
       return true;
     }
@@ -3479,47 +4178,26 @@
     btn.id = 'ss-hwy-c411-set-btn';
     btn.setAttribute('role', 'button');
     btn.setAttribute('aria-label', 'Highway and Carrier411 badge settings');
-    btn.title = 'Carrier check settings';
     btn.tabIndex = 0;
-    var gear = svgEl('svg', {
-      class: 'ss-set-gear',
-      viewBox: '0 0 24 24',
-      width: '24',
-      height: '24'
-    });
-    gear.appendChild(
-      svgEl('path', {
-        fill: 'currentColor',
-        'fill-rule': 'evenodd',
-        d:
-          'M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.61l-1.92-3.32a.5.5 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94L14.4 2.81a.5.5 0 0 0-.48-.41h-3.84a.5.5 0 0 0-.47.41L9.25 5.35c-.59.24-1.13.56-1.62.94l-2.39-.96a.5.5 0 0 0-.59.22L2.73 8.87a.5.5 0 0 0 .12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.61l1.92 3.32c.12.22.37.3.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.04.24.23.41.47.41h3.84c.24 0 .44-.17.48-.41l.36-2.54c.59-.24 1.12-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.5.5 0 0 0-.12-.61l-2.03-1.58zM12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6z'
-      })
-    );
-    btn.appendChild(gear);
+    bindHoverTip(btn, 'Carrier check settings');
     var logo = document.createElement('img');
-    logo.src = HWY_LOGO;
+    logo.className = 'ss-set-icon';
+    logo.src = SET_LOGO;
     logo.alt = '';
-    logo.width = 12;
-    logo.height = 12;
+    logo.width = 32;
+    logo.height = 32;
     logo.draggable = false;
     btn.appendChild(logo);
     wrap.appendChild(btn);
     slot.parent.insertBefore(wrap, slot.before);
+    pinOpenCallout();
     return !wrap.contains(slot.before);
   }
 
   function startHwyCopy() {
     if (!/^\/broker\/carriers\/\d+/.test(location.pathname)) return;
     GM_addStyle(
-      '.ss-hwy-mc{position:relative;color:#93c5fd!important;text-decoration:underline;cursor:pointer;font-weight:700;}' +
-        '.ss-hwy-tip{position:absolute;left:0;bottom:calc(100% + 9px);z-index:50;padding:6px 10px;' +
-        'font:12px/1.3 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;font-weight:500;letter-spacing:.01em;' +
-        'color:#f8fafc;background:#0f172a;border-radius:8px;white-space:nowrap;pointer-events:none;' +
-        'opacity:0;transform:translateY(4px);transition:opacity .14s ease,transform .14s ease;' +
-        'box-shadow:0 8px 24px rgba(15,23,42,.28);}' +
-        '.ss-hwy-tip:after{content:"";position:absolute;top:100%;left:14px;border:5px solid transparent;border-top-color:#0f172a;}' +
-        '.ss-hwy-mc:hover .ss-hwy-tip{opacity:1;transform:translateY(0);}' +
-        '.ss-hwy-ok{color:#4ade80;font-weight:800;margin-left:5px;font-size:13px;}'
+      '.ss-hwy-mc{color:#93c5fd!important;text-decoration:underline;cursor:pointer;font-weight:700;}'
     );
     var bound = null;
     var clip = { name: '', mc: '', dot: '' };
@@ -3562,27 +4240,14 @@
       clip.dot = dotTxt;
       mcEl.classList.add('ss-hwy-mc');
       mcEl.removeAttribute('title');
-      if (!mcEl.querySelector('.ss-hwy-tip')) {
-        var tip = document.createElement('span');
-        tip.className = 'ss-hwy-tip';
-        tip.textContent = 'Copy carrier info to clipboard';
-        mcEl.insertBefore(tip, mcEl.firstChild);
-      }
       if (bound === mcEl) return;
       bound = mcEl;
+      bindHoverTip(mcEl, 'Copy carrier info to clipboard');
       mcEl.addEventListener('click', function (ev) {
         ev.preventDefault();
         ev.stopPropagation();
         clipText(clip.name + '\n' + clip.mc + (clip.dot ? '\n' + clip.dot : ''));
-        var old = mcEl.querySelector('.ss-hwy-ok');
-        if (old) old.parentNode.removeChild(old);
-        var ck = document.createElement('span');
-        ck.className = 'ss-hwy-ok';
-        ck.textContent = '✓';
-        mcEl.appendChild(ck);
-        setTimeout(function () {
-          if (ck.parentNode) ck.parentNode.removeChild(ck);
-        }, 1600);
+        flashCopied(mcEl, 'Copy carrier info to clipboard');
       });
     }
     var wait = null;
@@ -3634,7 +4299,7 @@
       var m = muts[i];
       var tgt = m.target;
       if (tgt && tgt.nodeType === 3) tgt = tgt.parentElement;
-      if (tgt && tgt.closest && tgt.closest('.hwy-mc-wrap, .ss-intel-msg, .ss-intel-host, tr.ss-intel-tr, #ss-intel-bar, #ss-hwy-c411-panel, #ss-hwy-c411-set-wrap')) {
+      if (tgt && tgt.closest && tgt.closest('.hwy-mc-wrap, .ss-rate-wrap, .ss-intel-msg, .ss-intel-host, tr.ss-intel-tr, #ss-intel-bar, #ss-hwy-c411-panel, #ss-hwy-c411-set-wrap, #ss-ss-callout, .ss-fast-tip')) {
         continue;
       }
       if (m.addedNodes) {
@@ -3703,11 +4368,11 @@
               hit = true;
               break;
             }
-            if (node.closest && node.closest('.hwy-mc-badges, .hwy-mc-copied, .ss-intel-msg, #ss-intel-bar')) {
+            if (node.closest && node.closest('.hwy-mc-badges, .ss-intel-msg, #ss-intel-bar')) {
               hit = true;
               break;
             }
-            if (node.querySelector && node.querySelector('.hwy-mc-badges, .hwy-mc-copied')) {
+            if (node.querySelector && node.querySelector('.hwy-mc-badges')) {
               hit = true;
               break;
             }
@@ -3731,6 +4396,10 @@
       );
     }
     bindCopyFilter();
+    window.addEventListener('resize', function () {
+      var c = document.getElementById('ss-ss-callout');
+      if (c) placeSsCallout(c);
+    });
     scanNow();
     armObserver();
     window.addEventListener('hashchange', kickScan);
@@ -3758,9 +4427,5 @@
       retryClickedC411();
     });
   }
-  if (window.__ssGmReady && typeof window.__ssGmReady.then === 'function') {
-    window.__ssGmReady.then(start);
-  } else {
-    start();
-  }
+  start();
 })();
