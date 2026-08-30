@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail Highway Carrier411 MC badges
 // @namespace    shipsierra.highway.gmail
-// @version      1.18.14
+// @version      1.18.15
 // @description  Highway and Carrier411 carrier info next to MC numbers in Gmail.
 // @author       Ivan Karpenko
 // @copyright    2026, ShipSierra.com (Ivan Karpenko)
@@ -37,7 +37,7 @@
   var CACHE_KEY = 'hwy_mc_cache_v10';
   var C411_CACHE_KEY = 'c411_fg_cache_v1';
   var SETTINGS_KEY = 'hwy_c411_badge_settings_v3';
-  var SCRIPT_VERSION = '1.18.14';
+  var SCRIPT_VERSION = '1.18.15';
   var SCRIPT_TITLE = 'ShipSierra.com Carrier Check on Hwy/C411';
   var RELEASE_DATE = 'August 30, 2026';
   var ORG_MC_KEY = 'ss_org_mc';
@@ -2588,16 +2588,6 @@
         fn();
       } catch (e) {}
     });
-    var cards = document.querySelectorAll('.ss-intel-card[data-ss-mc="' + mc + '"]');
-    if (cards.length) {
-      var i;
-      for (i = 0; i < cards.length; i++) {
-        var msg = messageRoot(cards[i]) || cards[i];
-        refreshMsgCard(cards[i], msg, mc);
-      }
-      wrapRatesInOpenThread();
-      return;
-    }
     schedulePaintBar();
   }
   function messageRoot(node) {
@@ -3011,67 +3001,6 @@
     clipText(carrierClipboardText(name, mc, dot));
     flashCopyBtn(btn, 'Copy Carrier + MC/DOT');
   }
-  function hasSettledPills(hit) {
-    if (!hit || !hit.querySelectorAll) return false;
-    var pills = hit.querySelectorAll('.hwy-mc-pill');
-    var i;
-    for (i = 0; i < pills.length; i++) {
-      if (!pills[i].classList.contains('hwy-mc-wait')) return true;
-    }
-    return false;
-  }
-  function hwyStateKey(st) {
-    var h = st && st.hwy;
-    if (!h || h.login) return '';
-    return [
-      h.name || '',
-      h.assessment || '',
-      h.fleet == null ? '' : h.fleet,
-      h.safety == null ? '' : h.safety,
-      h.connStatus || '',
-      h.dnu ? '1' : '0',
-      h.cargoAmt == null ? '' : h.cargoAmt,
-      h.bipdAmt == null ? '' : h.bipdAmt,
-      h.glAmt == null ? '' : h.glAmt,
-      (h.emails && h.emails.length) || 0
-    ].join('|');
-  }
-  function c411StateKey(st) {
-    var f = st && st.fg;
-    if (!f || f.login || f.needTab || f.error) return '';
-    return [f.hasFg ? '1' : '0', f.date || '', f.loss ? '1' : '0', f.rating || '', f.related ? '1' : '0'].join('|');
-  }
-  function refreshMsgCard(card, msg, mc) {
-    var st = ensureMc(mc);
-    if (!msg || !msg.querySelector) msg = messageRoot(card) || card;
-    var wrapForMc = msg.querySelector ? msg.querySelector('.hwy-mc-wrap[data-hwy-mc="' + mc + '"]') : null;
-    var fromAddr = threadCarrierAddr(wrapForMc || msg);
-    card.className = 'ss-intel-card ' + riskClass(st, fromAddr);
-    var name = (st.hwy && st.hwy.name) || 'MC ' + mc;
-    var nameEl = card.querySelector('.ss-intel-name');
-    if (nameEl && nameEl.textContent !== name) nameEl.textContent = name;
-    card.setAttribute('data-ss-mc', mc);
-    var hwyHit = card.querySelector('.hwy-mc-hit');
-    var c411Hit = card.querySelector('.hwy-c411-hit');
-    var hwyKey = hwyStateKey(st);
-    var c411Key = c411StateKey(st);
-    if (hwyHit && hwyKey && card.getAttribute('data-ss-hwy') !== hwyKey) {
-      card.setAttribute('data-ss-hwy', hwyKey);
-      while (hwyHit.firstChild) hwyHit.removeChild(hwyHit.firstChild);
-      paintHwyPills(hwyHit, st, fromAddr, false);
-    } else if (hwyHit && !hwyKey && !hasSettledPills(hwyHit)) {
-      while (hwyHit.firstChild) hwyHit.removeChild(hwyHit.firstChild);
-      paintHwyPills(hwyHit, st, fromAddr, false);
-    }
-    if (c411Hit && c411Key && card.getAttribute('data-ss-c411') !== c411Key) {
-      card.setAttribute('data-ss-c411', c411Key);
-      while (c411Hit.firstChild) c411Hit.removeChild(c411Hit.firstChild);
-      paintC411Pills(c411Hit, st, mc, false);
-    } else if (c411Hit && !c411Key && !hasSettledPills(c411Hit)) {
-      while (c411Hit.firstChild) c411Hit.removeChild(c411Hit.firstChild);
-      paintC411Pills(c411Hit, st, mc, false);
-    }
-  }
   function buildMsgCard(msg, mc) {
     var st = ensureMc(mc);
     var wrapForMc = msg.querySelector('.hwy-mc-wrap[data-hwy-mc="' + mc + '"]');
@@ -3143,30 +3072,8 @@
   }
   function fillMsgBar(bar, msg, mcs) {
     mcs = uniqMcs(mcs);
-    var key = mcs.join(',');
-    var same = bar.getAttribute('data-ss-mcs') === key && bar.children.length === mcs.length;
-    if (same) {
-      if (hasSettledPills(bar)) {
-        var j;
-        for (j = 0; j < mcs.length; j++) refreshMsgCard(bar.children[j], msg, mcs[j]);
-        return;
-      }
-      var i;
-      for (i = 0; i < mcs.length; i++) refreshMsgCard(bar.children[i], msg, mcs[i]);
-      return;
-    }
-    if (hasSettledPills(bar) && bar.children.length) {
-      mcs.forEach(function (mc) {
-        if (!bar.querySelector('.ss-intel-card[data-ss-mc="' + mc + '"]')) {
-          bar.appendChild(buildMsgCard(msg, mc));
-        }
-      });
-      bar.setAttribute('data-ss-mcs', key);
-      return;
-    }
     hideFastTip();
     while (bar.firstChild) bar.removeChild(bar.firstChild);
-    bar.setAttribute('data-ss-mcs', key);
     mcs.forEach(function (mc) {
       bar.appendChild(buildMsgCard(msg, mc));
     });
@@ -3208,7 +3115,9 @@
       var host = messageHeaderHost(msg);
       var bar = msg.querySelector('.ss-intel-msg');
       if (!mcs.length || !host) {
-        if (bar && hasSettledPills(bar)) keep.push(bar);
+        if (bar) dropNode(bar);
+        var emptyHost = msg.querySelector('tr.ss-intel-tr, .ss-intel-host');
+        if (emptyHost && !emptyHost.querySelector('.ss-intel-msg')) dropNode(emptyHost);
         continue;
       }
       if (!bar) {
@@ -3221,9 +3130,10 @@
       keep.push(bar);
     }
     root.querySelectorAll('.ss-intel-msg').forEach(function (n) {
-      if (keep.indexOf(n) >= 0) return;
-      if (hasSettledPills(n)) return;
-      dropNode(n);
+      if (keep.indexOf(n) < 0) dropNode(n);
+    });
+    root.querySelectorAll('tr.ss-intel-tr, .ss-intel-host').forEach(function (n) {
+      if (!n.querySelector('.ss-intel-msg')) dropNode(n);
     });
     wrapRatesInOpenThread();
   }
@@ -3573,9 +3483,13 @@
   }
 
   function pruneIdleMc(root) {
-    if (root) return;
+    var keep = {};
+    wrapsInOpenMail(root).forEach(function (w) {
+      var mc = w.getAttribute('data-hwy-mc');
+      if (mc) keep[mc] = true;
+    });
     Object.keys(mcStore).forEach(function (mc) {
-      if (inflight[mc] || c411Inflight[mc] || hwyExtrasInflight[mc]) return;
+      if (keep[mc] || inflight[mc] || c411Inflight[mc] || hwyExtrasInflight[mc]) return;
       delete mcStore[mc];
     });
   }
@@ -3649,7 +3563,6 @@
       openRetry = 0;
       var root = openThreadRoot();
       if (!root) return;
-      if (root.querySelector('.ss-intel-msg') && hasSettledPills(root.querySelector('.ss-intel-msg'))) return;
       if (!root.querySelector('.hwy-mc-wrap')) {
         scanNow();
         return;
@@ -4452,26 +4365,10 @@
     if (s.length > 4000) s = s.slice(0, 4000);
     return /MC/i.test(s) || /\d{4,8}/.test(s);
   }
-  function isOurUiNode(n) {
-    if (!n || n.nodeType !== 1) return false;
-    if (n.id === 'ss-intel-bar' || n.id === 'ss-ss-callout' || n.id === 'ss-hwy-c411-panel') return true;
-    var cl = n.classList;
-    if (!cl) return false;
-    return !!(
-      cl.contains('ss-intel-msg') ||
-      cl.contains('ss-intel-host') ||
-      cl.contains('ss-intel-tr') ||
-      cl.contains('ss-intel-card') ||
-      cl.contains('hwy-mc-wrap') ||
-      cl.contains('ss-rate-wrap') ||
-      cl.contains('ss-fast-tip')
-    );
-  }
   function removedNeedsScan(n) {
     if (!n || n.nodeType !== 1) return false;
-    if (isOurUiNode(n)) return false;
     var cls = n.className ? String(n.className) : '';
-    if (/(\bh7\b|\ba3s\b|\bhP\b)/.test(cls)) return true;
+    if (/(hwy-mc-wrap|ss-intel|\bh7\b|\ba3s\b|\bhP\b)/.test(cls)) return true;
     if (n.childElementCount > 15) return true;
     return false;
   }
@@ -4497,7 +4394,6 @@
       }
       if (m.removedNodes && m.removedNodes.length) {
         for (j = 0; j < m.removedNodes.length; j++) {
-          if (isOurUiNode(m.removedNodes[j])) continue;
           if (removedNeedsScan(m.removedNodes[j])) {
             schedule();
             return;
