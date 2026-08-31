@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail Highway Carrier411 MC badges
 // @namespace    shipsierra.highway.gmail
-// @version      1.18.20
+// @version      1.18.29
 // @description  Highway and Carrier411 carrier info next to MC numbers in Gmail.
 // @author       Ivan Karpenko
 // @copyright    2026, ShipSierra.com (Ivan Karpenko)
@@ -39,25 +39,28 @@
   var CACHE_KEY = 'hwy_mc_cache_v10';
   var C411_CACHE_KEY = 'c411_fg_cache_v1';
   var SETTINGS_KEY = 'hwy_c411_badge_settings_v3';
-  var SCRIPT_VERSION = '1.18.20';
+  var SCRIPT_VERSION = '1.18.29';
   var SCRIPT_TITLE = 'ShipSierra.com Carrier Check on Hwy/C411';
-  var RELEASE_DATE = 'August 30, 2026';
+  var RELEASE_DATE = 'August 31, 2026';
   var ORG_MC_KEY = 'ss_org_mc';
+  var ORG_MC_NEED_KEY = 'ss_org_mc_need';
   var NOTES_VER_KEY = 'ss_notes_ver';
   var CACHE_VER_KEY = 'ss_hwy_cache_ver';
+  var ADDR_MC_KEY = 'ss_addr_mc_v1';
+  var ADDR_MC_TTL = 24 * 60 * 60 * 1000;
   var CALLOUT_BG = '#fff6d9';
   var CARET_PX = 11;
   var RELEASE_NOTES =
-    '• Switching to Next to MC hides the bar right away.\n' +
-    '• Carrier411 can load with the Carrier411 tab closed.\n' +
-    '• If you are logged out of Carrier411, the bar says Login. Click it to sign in.\n' +
-    '• Each reply in a long thread gets its own carrier bar.\n' +
-    '• Highway lookups start fresh after this update, then stay saved for the rest of the day.';
+    '• Settings list is tighter and easier to reorder.\n' +
+    '• Hover tips stay while the mouse is on a badge or the settings truck.\n' +
+    '• Bug fixes.';
   var HWY_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAHGSURBVHgB7ZZNTsJQEMdnWqWwqwsjyx5BtxJjOQF6AnoDuYF4MkgMuhRPQNlh3LCyBdOOry2B8j4LYWd/m5fMTOf937yPKUBNzX8HTQHRpD1EpGfOPG3eft2UDfHb1YwNXtlGhC+tzmIIGiwwKUTqC0aCucT2KSRHegIDWgHRa9sHblWFKgh5UwqijQDcTY7jBICdBgpPCBVE5RPY+iooBUSjtoeAfZmPEpwK8xMuFal8GrkuHCoAGuCrXLaVCJPZkExlsdk2rBwngEMFIKTK0jU638JkiWWrKpDRU88jYT25vE7R+gA1ocLuqT5g29Zt3S3GvP1MFpwgDgwPhAcHgjY9sGHM26VbwA7fPZwYtqC+7DAKAtjLF8ARKzSRHcYfp+WDSYD05TsRtuRg7211fvcdmoGeUO0iVmJ0QYOzWl1gd7m9MfuHsAEBGLAofZRdw4zonS2A9AuIG80BG4bbfGVnlfKfr39Dla8Zx7q3oJiQa1BbAcrGU4Lt17JcPsGf+0grgm9QuwqoG0/54xDMQcaYcoPKBegaD5d8bowBrBCza1BFBTSNZz+3eXVphSqVG5RV5E2Nfy4bQmNEBZEbelBTU8P4A46qjYFyL5/4AAAAAElFTkSuQmCC';
   var C411_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAC1UlEQVR4nMSWTUwTQRTHZ5cWqkAopAoVFA2CihEwaow1ICSGg0D0oKLx4MFEL3Iw4SAYY4gQ4sfJePOgXvwIEBWDMR4Uw4cGjdHwWTCBgBJaU8XWUtvd7vp/W7M0bS3hsOs7/Dp9b2by/pl5b9ZQd+sUY2xi1s7+bUFRjvJIbCnLz9oE8kxjM3yeG8cPx3Mxw6FMOSUNn/83aE23gmvSc0D3ghu0fx0FjXxixFr7LPm1VxA/LAZFcNv6ErDlxDUw2ZQaMcfrIx2tbc1gz3A3bcovbqu5Au5AS2nMgBAQwMrt1WD9wQvgT28AvN7eC844f4A5Gcng6ard4LqsdPBqB+l4NvAUTOATdFJQFifc1dgNTjt/gYdbO0DB71ejkt+rju+erwVL8rPBo601oMvjYrrcoqgCCIp0cyqLq5V/FG560E9+iWqCNxrJLfgolkD5ZaaZwK7+IVVBedF+sK33vi4KuOgS5qjzZJqzVMebiTkwxUBTZUVfqBPJEs0szKWZVbZC0PGdTiV1BdWKLMvsf1Uyp+KvyXLMxaFTsVrSGNU8jc0ppsUNlOT1OAMuLKMg5SITR78Mqf4jtnyw8+2Ymlgor2yLGaw/VgG2vfwA7tycCzrm6cx4TpdKNsjKnQkI1GdKt5SDeavpJbIV7FMnXay1gdMO6j/vxmYUH2UmiKT1Sc8gWLO3GPT4PGDnQDtoMq5keigI9byGQ01gxdbKiPCUc1Id3z5HtT00+Q3sG5kCC9dawNKiDeqcszfPgEmJdJdkpVq076YuN2WUkWqJGS67RG+ZOTkDPL7nJLhj4y6wwEp1Oz47Ar6fGADv9d4BA8orEm7aK5CjqtS9MA82P6JXbHD6U0RUFMSYGxk4Y0y/vgpeDb8Abzy/AgbEAFu+SVGLtFcgKR3x8uNGsM/+GkwyGJdcFhTiRaWwL1ftFTQ8rGN0Wz6y5ZskcHGieauoB2uu4A8AAAD//1ZDwTcAAAAGSURBVAMARiLtUypmc+4AAAAASUVORK5CYII=';
-  var SET_LOGO = 'data:image/png;base64,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';
+  var SET_LOGO = 'data:image/png;base64,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';
   var SEARCH_URL = 'https://highway.com/broker/carriers/search-results?q=';
   var C411_URL = 'https://www.carrier411.com/manager/companydetail.cfm?docket=';
+  var HWY_LOGIN_URL = 'https://highway.com/broker/login';
+  var C411_LOGIN_URL = 'https://www.carrier411.com/';
   var API_SEARCH_BASE =
     'https://highway.com/monitor/api/v1/carriers/global_search?page=1' +
     '&q%5Bs%5D=legal_name_search+asc';
@@ -72,6 +75,8 @@
   var BARE_MC_REPLY = /^\s*#?\s*([0-9]{5,8})\s*\.?\s*$/;
   var HWY_CHECK =
     "data:image/svg+xml,%3csvg%20width='13'%20height='13'%20viewBox='0%200%2013%2013'%20fill='none'%20xmlns='http://www.w3.org/2000/svg'%3e%3cpath%20fill-rule='evenodd'%20clip-rule='evenodd'%20d='M6.30466%2012.2119C9.35139%2012.2119%2011.8212%209.74201%2011.8212%206.69529C11.8212%205.8144%2011.6148%204.98173%2011.2476%204.24303L6.49714%208.99348L5.93988%209.55074L5.38262%208.99348L2.95534%206.56621L4.06986%205.45169L5.93988%207.32171L10.3341%202.92748C9.32739%201.8513%207.89458%201.17871%206.30466%201.17871C3.25794%201.17871%200.788086%203.64857%200.788086%206.69529C0.788086%209.74201%203.25794%2012.2119%206.30466%2012.2119Z'%20fill='%2354C774'/%3e%3c/svg%3e";
+  var HWY_X =
+    "data:image/svg+xml,%3csvg%20width='13'%20height='13'%20viewBox='0%200%2013%2013'%20fill='none'%20xmlns='http://www.w3.org/2000/svg'%3e%3ccircle%20cx='6.5'%20cy='6.5'%20r='5.5'%20fill='%23E11D48'/%3e%3cpath%20d='M4.2%204.2L8.8%208.8M8.8%204.2L4.2%208.8'%20stroke='%23fff'%20stroke-width='1.55'%20stroke-linecap='round'/%3e%3c/svg%3e";
   var MC_END = new RegExp('MC(?:\\b' + MC_GAP + MC_FILL + MC_GAP + ')$', 'i');
   var MC_NEXT = new RegExp(MC_LEAD + '([0-9]{4,8})\\b');
   var NUM_END = /([0-9]{4,8})[ \u00a0\u2007\u202f\u200b]*$/;
@@ -88,7 +93,10 @@
     gl: { label: 'Gen Liab Ins', source: 'Highway active commercial general liability aggregate limit' },
     connection: { label: 'Connected / No Connect', source: 'Yellow Connected only if Highway status is onboarded/connected. Any other status (Connect, connecting, none) is a red No Connect pill.' },
     dnu: { label: 'Do Not Use (DNU)', source: 'Highway Do Not Use switch (connection.status do_not_dispatch)' },
-    domain: { label: 'Email domain match', source: 'Green check: exact Highway email, or same unique company domain. Public (Gmail/Yahoo/iCloud): Unmatched (yellow) if Highway has that brand but a different address; Bad email (red) if Highway does not. Unique domain with no match: Domain NOT Match (red).' }
+    domain: { label: 'Email domain match', source: 'Green check: exact Highway email, or same unique company domain. Public (Gmail/Yahoo/iCloud): Unmatched (yellow) if Highway has that brand but a different address; Bad email (red) if Highway does not. Unique domain with no match: Domain NOT Match (red).' },
+    truckPlate: { label: 'Truck plate', source: 'Green check if a truck plate in the email is on this carrier’s Highway equipment list. Red if it is not.' },
+    trailerPlate: { label: 'Trailer plate', source: 'Green check if a trailer plate in the email is on this carrier’s Highway equipment list. Red if it is not.' },
+    truckVin: { label: 'Truck VIN', source: 'Green check if a truck VIN in the email is on this carrier’s Highway equipment list. Red if it is not.' }
   };
   var C411_FIELD_META = {
     fg: { label: 'FreightGuard (FG 8/12/26)', source: 'Carrier411 Reported Items date' },
@@ -111,7 +119,7 @@
       '.hwy-mc-hit:hover,.hwy-c411-hit:hover{opacity:.85;}' +
       '.hwy-mc-logo{display:block;width:16px;height:16px;object-fit:contain;flex-shrink:0;border-radius:3px;}' +
       '.hwy-mc-pill{display:inline-flex;align-items:center;gap:3px;border-radius:999px;padding:1px 6px;font-weight:700;border:1px solid transparent;white-space:nowrap;}' +
-      '.hwy-mc-pill .hwy-check{width:13px;height:13px;display:block;flex:none;}' +
+      '.hwy-mc-pill .hwy-check,.hwy-mc-pill .hwy-x{width:13px;height:13px;display:block;flex:none;}' +
       '.hwy-mc-fail{background:#F8D0D6;color:#9B1B30;border-color:#F0A8B4;}' +
       '.hwy-mc-partial{background:#D1E7DD;color:#0F5132;border-color:#A3CFBB;}' +
       '.hwy-mc-pass{background:#D1E7DD;color:#0F5132;border-color:#A3CFBB;}' +
@@ -124,13 +132,18 @@
       '.hwy-mc-conn{background:rgba(248,198,23,.28);color:#92400E;border-color:#F8C617;}' +
       '.hwy-mc-noconn{background:#F8D0D6;color:#9B1B30;border-color:#F0A8B4;}' +
       '.hwy-mc-dnu{background:#F8D0D6;color:#9B1B30;border-color:#E11D48;font-weight:800;}' +
-      '#ss-hwy-c411-set-wrap{display:inline-flex;align-items:center;justify-content:center;flex:none;position:static;' +
+      '#ss-hwy-c411-set-wrap{display:inline-flex;align-items:center;justify-content:center;flex:none;position:relative;' +
       'z-index:auto;margin:0 4px 0 0;vertical-align:middle;}' +
-      '#ss-hwy-c411-set-btn{width:40px;height:40px;min-width:40px;min-height:40px;border-radius:50%;cursor:pointer;flex:none;' +
-      'display:inline-flex;align-items:center;justify-content:center;position:relative;margin:0;' +
-      'background:transparent;border:0;padding:0;outline:none;z-index:auto;box-sizing:border-box;color:#5f6368;}' +
+      '#ss-hwy-c411-set-btn{width:64px;height:36px;min-width:64px;min-height:36px;border-radius:18px;cursor:pointer;flex:none;' +
+      'display:inline-flex;align-items:center;justify-content:center;position:relative;margin:0;padding:0 4px;' +
+      'background:transparent;border:0;outline:none;z-index:auto;box-sizing:border-box;color:#5f6368;overflow:visible;}' +
       '#ss-hwy-c411-set-btn:hover{background:rgba(60,64,67,.08);}' +
-      '#ss-hwy-c411-set-btn .ss-set-icon{display:block;width:32px;height:32px;pointer-events:none;object-fit:contain;}' +
+      '#ss-hwy-c411-set-btn .ss-set-icon{display:block;width:50px;height:50px;pointer-events:none;object-fit:contain;background:transparent;}' +
+      '.ss-mc-badge{position:absolute;top:-5px;right:-4px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;' +
+      'background:#d93025;color:#fff;font:700 10px/16px -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;' +
+      'text-align:center;pointer-events:none;z-index:2;box-shadow:0 0 0 2px #fff;' +
+      'animation:ss-mc-pulse 2.6s ease-in-out infinite;}' +
+      '@keyframes ss-mc-pulse{0%,100%{background:#d93025;}50%{background:#ea4335;}}' +
       '.ss-intel-host{display:block;margin:1px 0 0;padding:0;text-align:right;max-width:100%;}' +
       'tr.ss-intel-tr td{padding:7px calc(2px + var(--ss-time-pad, 0px)) 1px 0 !important;text-align:right !important;vertical-align:top;' +
       'border:0 !important;outline:none !important;box-shadow:none !important;width:100% !important;}' +
@@ -161,6 +174,13 @@
       '.ss-notes-pill:hover{background:#d3e3fd;}' +
       '.ss-org-box{margin:10px 4px 8px;padding:10px 10px 8px;border:1px solid #c5ced6;border-radius:10px;background:#e6ebf0;}' +
       '.ss-org-box p{margin:0 0 8px;font-size:12px;line-height:1.4;color:#5f6368;}' +
+      '.ss-org-box-need{background:#fff6d9;border-color:#e8c547;box-shadow:0 0 0 2px rgba(232,197,71,.35);}' +
+      '.ss-org-box-need p{color:#7a4e00;font-weight:700;}' +
+      '.ss-login-notes{margin:8px 12px 0;display:flex;flex-direction:column;gap:6px;}' +
+      '.ss-login-note{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e8c547;border-radius:10px;background:#fff6d9;}' +
+      '.ss-login-note .ss-login-lab{flex:1;font-size:12px;font-weight:700;color:#7a4e00;line-height:1.3;}' +
+      '.ss-login-note .hwy-mc-logo{width:16px;height:16px;flex:none;}' +
+      '.ss-login-note .hwy-mc-pill{cursor:pointer;}' +
       '.ss-org-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}' +
       '.ss-org-row b{font-size:13px;}' +
       '.ss-org-mc{width:88px;padding:5px 8px;border:1px solid #dadce0;border-radius:6px;font:13px inherit;background:#fff;}' +
@@ -204,20 +224,25 @@
       '#ss-hwy-c411-panel .ss-set-title{font-weight:700;font-size:14px;flex:1;}' +
       '#ss-hwy-c411-panel .ss-set-close{width:28px;height:28px;border:0;background:#c2cad3;border-radius:50%;cursor:pointer;font-size:16px;line-height:28px;color:#3c4043;}' +
       '#ss-hwy-c411-panel .ss-set-close:hover{background:#b5bec7;}' +
-      '#ss-hwy-c411-panel .ss-set-search{margin:10px 12px 8px;padding:8px 10px;border:1px solid #cdd5dc;border-radius:8px;width:auto;font:13px/1.3 inherit;background:#fff;}' +
-      '#ss-hwy-c411-panel .ss-set-body{flex:1 1 auto;overflow:auto;padding:8px;min-height:240px;}' +
-      '#ss-hwy-c411-panel .ss-set-sec{margin:10px 4px 6px;padding:8px 8px 6px;border:1px solid #c5ced6;border-radius:10px;background:#e6ebf0;}' +
-      '#ss-hwy-c411-panel .ss-set-sec h3{display:flex;align-items:center;gap:6px;margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#5f6368;}' +
+      '#ss-hwy-c411-panel .ss-set-search{margin:8px 12px 6px;padding:6px 10px;border:1px solid #cdd5dc;border-radius:8px;width:auto;font:13px/1.3 inherit;background:#fff;}' +
+      '#ss-hwy-c411-panel .ss-set-body{flex:1 1 auto;overflow:auto;padding:6px 8px;min-height:240px;}' +
+      '#ss-hwy-c411-panel .ss-set-sec{margin:8px 4px 4px;padding:6px 8px 4px;border:1px solid #c5ced6;border-radius:10px;background:#e6ebf0;}' +
+      '#ss-hwy-c411-panel .ss-set-sec h3{display:flex;align-items:center;gap:6px;margin:0 0 4px;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#5f6368;}' +
       '#ss-hwy-c411-panel .ss-set-sec h3 img{width:14px;height:14px;border-radius:3px;}' +
-      '#ss-hwy-c411-panel .ss-set-row{display:flex !important;align-items:center;gap:8px;padding:8px 6px;border-radius:6px;cursor:pointer;min-height:36px;color:#202124;font-size:13px;line-height:1.3;}' +
+      '#ss-hwy-c411-panel .ss-set-row{display:flex !important;align-items:center;gap:6px;padding:5px 6px;border-radius:6px;cursor:pointer;' +
+      'box-sizing:border-box !important;min-height:30px;color:#202124;font-size:13px;line-height:1.25;}' +
       '#ss-hwy-c411-panel .ss-set-row:hover{background:#d0d8e0;}' +
       '#ss-hwy-c411-panel .ss-set-row.ss-hidden-row{display:none !important;}' +
+      '#ss-hwy-c411-panel .ss-set-row.ss-set-dragging{opacity:.72;outline:2px dashed #1a73e8;outline-offset:-2px;background:#e8f0fe;}' +
+      '#ss-hwy-c411-panel .ss-set-row.ss-set-drop-before,#ss-hwy-c411-panel .ss-set-row.ss-set-drop-after{outline:2px solid #1a73e8;outline-offset:-2px;background:#eef4ff;}' +
+      '#ss-hwy-c411-panel .ss-set-row.ss-set-drop-before{box-shadow:inset 0 3px 0 0 #1a73e8;}' +
+      '#ss-hwy-c411-panel .ss-set-row.ss-set-drop-after{box-shadow:inset 0 -3px 0 0 #1a73e8;}' +
       '#ss-hwy-c411-panel .ss-set-grip{color:#9aa0a6;font-size:14px;letter-spacing:-1px;user-select:none;cursor:grab;}' +
-      '#ss-hwy-c411-panel .ss-set-check{width:18px;height:18px;flex:none;border:2px solid #5f6368;border-radius:4px;background:#fff;color:#fff;text-align:center;font:700 12px/14px sans-serif;box-sizing:border-box;}' +
+      '#ss-hwy-c411-panel .ss-set-check{width:16px;height:16px;flex:none;border:2px solid #5f6368;border-radius:4px;background:#fff;color:#fff;text-align:center;font:700 11px/12px sans-serif;box-sizing:border-box;}' +
       '#ss-hwy-c411-panel .ss-set-check[aria-checked="true"]{background:#1a73e8;border-color:#1a73e8;}' +
       '#ss-hwy-c411-panel .ss-set-lab{flex:1;cursor:pointer;color:#202124;font-size:13px;}' +
       '#ss-hwy-c411-panel .ss-set-row.ss-has-extra{flex-wrap:wrap;align-items:flex-start;}' +
-      '#ss-hwy-c411-panel .ss-set-extra{flex:1 1 100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:2px 0 4px 42px;font-size:12px;color:#5f6368;cursor:default;}' +
+      '#ss-hwy-c411-panel .ss-set-extra{flex:1 1 100%;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:1px 0 2px 38px;font-size:12px;color:#5f6368;cursor:default;}' +
       '#ss-hwy-c411-panel .ss-set-nlab{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;cursor:default;}' +
       '#ss-hwy-c411-panel .ss-set-num{width:58px;padding:3px 6px;border:1px solid #dadce0;border-radius:6px;font:12px/1.2 inherit;background:#fff;color:#202124;}' +
       '#ss-hwy-c411-shade{position:fixed;inset:0;z-index:2147483646;background:rgba(15,23,42,.18);display:none;}' +
@@ -240,12 +265,135 @@
       return '';
     }
   }
+  function orgMcNeeded() {
+    try {
+      if (String(GM_getValue(ORG_MC_NEED_KEY, '') || '') === '1') return true;
+    } catch (e) {}
+    return !loadOrgMc();
+  }
+  function setOrgMcNeeded(on) {
+    try {
+      GM_setValue(ORG_MC_NEED_KEY, on ? '1' : '0');
+    } catch (e2) {}
+  }
   function saveOrgMc(mc) {
     var n = normMc(mc);
+    if (!n) return '';
     try {
       GM_setValue(ORG_MC_KEY, n);
     } catch (e) {}
+    setOrgMcNeeded(false);
     return n;
+  }
+  var sessionHwy = null;
+  var sessionC411 = null;
+  function noticeCount() {
+    var n = 0;
+    if (orgMcNeeded()) n += 1;
+    if (sessionHwy === false) n += 1;
+    if (sessionC411 === false) n += 1;
+    return n;
+  }
+  function setSessionHwy(ok) {
+    var next = ok ? true : false;
+    if (sessionHwy === next) {
+      syncMcBadge();
+      return;
+    }
+    sessionHwy = next;
+    syncMcBadge();
+    paintLoginNotes();
+  }
+  function setSessionC411(ok) {
+    var next = ok ? true : false;
+    if (sessionC411 === next) {
+      syncMcBadge();
+      return;
+    }
+    sessionC411 = next;
+    syncMcBadge();
+    paintLoginNotes();
+  }
+  function makeLoginPill(url) {
+    var p = el('span', 'hwy-mc-pill hwy-mc-wait', 'Log In');
+    p.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      window.open(url, '_blank', 'noopener');
+    });
+    return p;
+  }
+  function makeLoginNote(kind) {
+    var row = el('div', 'ss-login-note');
+    row.setAttribute('data-ss-login', kind);
+    if (kind === 'hwy') {
+      row.appendChild(logoImg(HWY_LOGO, 'Highway'));
+      row.appendChild(el('span', 'ss-login-lab', 'Sign in to Highway.com for results.'));
+      row.appendChild(makeLoginPill(HWY_LOGIN_URL));
+    } else {
+      row.appendChild(logoImg(C411_LOGO, 'Carrier411'));
+      row.appendChild(el('span', 'ss-login-lab', 'Sign in to Carrier411 for results.'));
+      row.appendChild(makeLoginPill(C411_LOGIN_URL));
+    }
+    return row;
+  }
+  function paintLoginNotes() {
+    if (!panelEl) return;
+    var search = panelEl.querySelector('.ss-set-search');
+    var host = panelEl.querySelector('.ss-login-notes');
+    var showHwy = sessionHwy === false;
+    var showC411 = sessionC411 === false;
+    if (!showHwy && !showC411) {
+      if (host && host.parentNode) host.parentNode.removeChild(host);
+      return;
+    }
+    if (!host) {
+      host = el('div', 'ss-login-notes');
+      if (search && search.parentNode) search.parentNode.insertBefore(host, search);
+      else panelEl.insertBefore(host, panelEl.firstChild);
+    }
+    while (host.firstChild) host.removeChild(host.firstChild);
+    if (showHwy) host.appendChild(makeLoginNote('hwy'));
+    if (showC411) host.appendChild(makeLoginNote('c411'));
+  }
+  function probeHwySession() {
+    gmGet(searchUrlExact('1'), null)
+      .then(function () {
+        setSessionHwy(true);
+      })
+      .catch(function (err) {
+        if (err && err.code === 'login') setSessionHwy(false);
+      });
+  }
+  function probeC411Session() {
+    gmGetHtml(C411_URL + 'MC000001')
+      .then(function (html) {
+        var parsed = parseC411HtmlToFg(html);
+        setSessionC411(!parsed.login);
+      })
+      .catch(function () {});
+  }
+  function probeSessions() {
+    probeHwySession();
+    probeC411Session();
+  }
+  function syncMcBadge() {
+    var btn = document.getElementById('ss-hwy-c411-set-btn');
+    if (!btn) return;
+    var n = noticeCount();
+    var b = document.getElementById('ss-hwy-c411-mc-badge');
+    if (!n) {
+      if (b && b.parentNode) b.parentNode.removeChild(b);
+      return;
+    }
+    if (!b) {
+      b = document.createElement('span');
+      b.id = 'ss-hwy-c411-mc-badge';
+      b.className = 'ss-mc-badge';
+      b.setAttribute('aria-label', 'Open Settings');
+      btn.appendChild(b);
+    }
+    b.textContent = String(n);
   }
   function shouldIgnore(mc) {
     if (!mc) return false;
@@ -365,7 +513,10 @@
         { id: 'gl', on: false },
         { id: 'connection', on: true },
         { id: 'dnu', on: true },
-        { id: 'domain', on: true }
+        { id: 'domain', on: true },
+        { id: 'truckPlate', on: true },
+        { id: 'trailerPlate', on: true },
+        { id: 'truckVin', on: true }
       ],
       c411: [
         { id: 'fg', on: true },
@@ -738,6 +889,75 @@
   function isSkipCarrierAddr(addr) {
     return !normEmail(addr) || isSelfOrCoworkerAddr(addr) || isBoardOrSystemAddr(addr);
   }
+  var addrMcMem = null;
+  function dropExpiredAddrMc(map) {
+    var now = Date.now();
+    Object.keys(map || {}).forEach(function (k) {
+      var rec = map[k];
+      if (!rec || !rec.ts || now - rec.ts > ADDR_MC_TTL) delete map[k];
+    });
+  }
+  function loadAddrMcMap() {
+    if (addrMcMem) {
+      dropExpiredAddrMc(addrMcMem);
+      return addrMcMem;
+    }
+    try {
+      addrMcMem = JSON.parse(GM_getValue(ADDR_MC_KEY, '{}') || '{}');
+    } catch (e) {
+      addrMcMem = {};
+    }
+    if (!addrMcMem || typeof addrMcMem !== 'object') addrMcMem = {};
+    dropExpiredAddrMc(addrMcMem);
+    return addrMcMem;
+  }
+  function saveAddrMcMap() {
+    try {
+      GM_setValue(ADDR_MC_KEY, JSON.stringify(addrMcMem || {}));
+    } catch (e) {}
+  }
+  function rememberAddrMc(addr, mcs) {
+    var e = normEmail(addr);
+    if (!e || isSkipCarrierAddr(e)) return;
+    var list = [];
+    var i;
+    for (i = 0; i < (mcs || []).length; i++) {
+      var mc = mcs[i];
+      if (!mc || shouldIgnore(mc) || list.indexOf(mc) >= 0) continue;
+      list.push(mc);
+    }
+    if (!list.length) return;
+    var map = loadAddrMcMap();
+    var prev = map[e];
+    if (prev && prev.mcs && prev.mcs.length === list.length) {
+      var same = true;
+      var j;
+      for (j = 0; j < list.length; j++) {
+        if (prev.mcs[j] !== list[j]) {
+          same = false;
+          break;
+        }
+      }
+      if (same) return;
+    }
+    map[e] = { mcs: list, ts: Date.now() };
+    addrMcMem = map;
+    saveAddrMcMap();
+  }
+  function assignedMcsForAddr(addr) {
+    var e = normEmail(addr);
+    if (!e) return [];
+    var rec = loadAddrMcMap()[e];
+    if (!rec || !rec.ts || Date.now() - rec.ts > ADDR_MC_TTL) return [];
+    var out = [];
+    var i;
+    for (i = 0; i < (rec.mcs || []).length; i++) {
+      var mc = rec.mcs[i];
+      if (!mc || shouldIgnore(mc) || out.indexOf(mc) >= 0) continue;
+      out.push(mc);
+    }
+    return out;
+  }
   function domainBadge(gmailAddr, hwyEmails) {
     var from = normEmail(gmailAddr);
     if (!from) {
@@ -1106,6 +1326,12 @@
   }
   function setCached(mc, data) {
     var all = readCache();
+    var prev = all[mc] || {};
+    var vehicles = Array.isArray(data.vehicles)
+      ? data.vehicles
+      : Array.isArray(prev.vehicles)
+        ? prev.vehicles
+        : undefined;
     all[mc] = {
       name: data.name || null,
       assessment: data.assessment || null,
@@ -1126,6 +1352,7 @@
       dot: data.dot ? String(data.dot) : '',
       ts: Date.now()
     };
+    if (vehicles) all[mc].vehicles = vehicles;
     dropStaleCache(all);
     writeCache(all);
   }
@@ -1477,8 +1704,10 @@
     return gmGetHtml(url).then(function (html) {
       var parsed = parseC411HtmlToFg(html);
       if (parsed.login) {
+        setSessionC411(false);
         setC411Cached(mc, { hasFg: false, login: true, ok: false });
       } else {
+        setSessionC411(true);
         setC411Cached(mc, parsed);
       }
       return getC411Cached(mc) || parsed;
@@ -1514,7 +1743,10 @@
         if (!m) return;
         var liveMc = String(Number(m[1]));
         var live = parseC411HtmlToFg(document.documentElement.innerHTML || '');
-        if (!live.login) setC411Cached(liveMc, live);
+        if (!live.login) {
+          setSessionC411(true);
+          setC411Cached(liveMc, live);
+        }
       } catch (e) {}
     }
     cacheLiveDocket();
@@ -1887,6 +2119,7 @@
   var hwyActive = 0;
   var hwyWait = [];
   var hwyExtrasInflight = {};
+  var hwyVehiclesInflight = {};
   function applyHwyExtraPack(result, pack) {
     var detail = pack[0];
     var safety = pack[1];
@@ -1961,6 +2194,107 @@
       });
     return hwyExtrasInflight[mc];
   }
+  function vehiclesUrl(id, page) {
+    return (
+      'https://highway.com/monitor/api/v1/carriers/' +
+      encodeURIComponent(id) +
+      '/vehicles?page=' +
+      page +
+      '&per_page=100'
+    );
+  }
+  function vehiclesFrom(data) {
+    if (Array.isArray(data)) return data;
+    if (!data || typeof data !== 'object') return [];
+    if (Array.isArray(data.vehicles)) return data.vehicles;
+    if (Array.isArray(data.carrier_vehicles)) return data.carrier_vehicles;
+    if (Array.isArray(data.results)) return data.results;
+    if (Array.isArray(data.data)) return data.data;
+    if (Array.isArray(data.items)) return data.items;
+    return [];
+  }
+  function plateFromVehicle(v) {
+    if (!v || typeof v !== 'object') return '';
+    var lcv = v.latest_carrier_vehicle || v.current_carrier_vehicle || v.carrier_vehicle || v;
+    var raw =
+      (lcv && (lcv.license_plate_number || lcv.plate_number || lcv.plate)) ||
+      v.license_plate_number ||
+      v.plate_number ||
+      '';
+    if (raw && typeof raw === 'object') raw = raw.number || raw.value || '';
+    if (!raw && lcv && lcv.license_plate && typeof lcv.license_plate === 'object') {
+      raw = lcv.license_plate.number || lcv.license_plate.value || '';
+    }
+    return String(raw || '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '');
+  }
+  function vinFromVehicle(v) {
+    if (!v || typeof v !== 'object') return '';
+    return String(v.vin || v.VIN || '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '');
+  }
+  function kindFromVehicle(v) {
+    var t = String((v && (v.is_type || v.type || v.vehicle_type)) || '').toLowerCase();
+    if (t === 'trailer' || t.indexOf('trailer') >= 0) return 'trailer';
+    if (t === 'power_unit' || t === 'truck' || t === 'tractor' || t.indexOf('power') >= 0) {
+      return 'truck';
+    }
+    return 'other';
+  }
+  function slimVehicle(v) {
+    var plate = plateFromVehicle(v);
+    var vin = vinFromVehicle(v);
+    if (!plate && !vin) return null;
+    return { plate: plate, vin: vin, kind: kindFromVehicle(v) };
+  }
+  function fetchHwyVehiclePages(mc, id) {
+    var all = [];
+    var page = 1;
+    var maxPages = 15;
+    function next() {
+      if (page > maxPages) return Promise.resolve(all);
+      return gmGet(vehiclesUrl(id, page), mc).then(function (data) {
+        var list = vehiclesFrom(data);
+        var i;
+        for (i = 0; i < list.length; i++) {
+          var item = slimVehicle(list[i]);
+          if (item) all.push(item);
+        }
+        page += 1;
+        if (!list.length || list.length < 50) return all;
+        return next();
+      });
+    }
+    return next();
+  }
+  function loadHwyVehicles(mc, id, result) {
+    if (!id || !result) return Promise.resolve(result);
+    if (Array.isArray(result.vehicles) || result.vehiclesFailed) return Promise.resolve(result);
+    if (hwyVehiclesInflight[mc]) return hwyVehiclesInflight[mc];
+    hwyVehiclesInflight[mc] = fetchHwyVehiclePages(mc, id)
+      .then(function (list) {
+        result.vehicles = list;
+        result.vehiclesFailed = false;
+        setCached(mc, result);
+        if (mcStore[mc]) {
+          mcStore[mc].hwy = result;
+          try {
+            notifyMc(mc);
+          } catch (e) {}
+        }
+        delete hwyVehiclesInflight[mc];
+        return result;
+      })
+      .catch(function (err) {
+        if (err && err.code === 'login') setSessionHwy(false);
+        result.vehiclesFailed = true;
+        delete hwyVehiclesInflight[mc];
+        return result;
+      });
+    return hwyVehiclesInflight[mc];
+  }
   function fetchHwy(mc) {
     return gmGet(searchUrlExact(mc), mc)
       .then(function (data) {
@@ -1971,6 +2305,7 @@
         });
       })
       .then(function (best) {
+        setSessionHwy(true);
         if (!best) {
           var miss = {
             name: null,
@@ -2023,6 +2358,7 @@
       })
       .catch(function (err) {
         var login = !!(err && err.code === 'login');
+        if (login) setSessionHwy(false);
         return {
           name: null,
           assessment: login ? 'Sign in' : 'Lookup failed',
@@ -2053,6 +2389,7 @@
       if (inflight[mc]) return inflight[mc];
     } else {
       abortHwy(mc);
+      delete hwyVehiclesInflight[mc];
     }
     inflight[mc] = new Promise(function (resolve) {
       var mine = inflight[mc];
@@ -2098,6 +2435,7 @@
 
   var fastTipEl = null;
   var fastTipTimer = 0;
+  var fastTipAnchor = null;
   function hideFastTip() {
     if (fastTipTimer) {
       clearTimeout(fastTipTimer);
@@ -2105,19 +2443,26 @@
     }
     if (fastTipEl && fastTipEl.parentNode) fastTipEl.parentNode.removeChild(fastTipEl);
     fastTipEl = null;
+    fastTipAnchor = null;
+  }
+  function tipAnchorStillHot(anchor) {
+    var a = anchor || fastTipAnchor;
+    if (!a || !a.isConnected) return false;
+    try {
+      if (a.matches && a.matches(':hover')) return true;
+    } catch (e) {}
+    return false;
   }
   function showFastTip(anchor, text, delay, force) {
-    hideFastTip();
     if (!text || !anchor) return;
+    if (fastTipAnchor === anchor && fastTipEl && fastTipEl.textContent === text) return;
+    hideFastTip();
+    fastTipAnchor = anchor;
     var wait = delay == null ? 0 : delay;
     function place() {
       fastTipTimer = 0;
       if (!anchor || !anchor.isConnected) return;
-      if (!force) {
-        try {
-          if (anchor.matches && !anchor.matches(':hover')) return;
-        } catch (eHover) {}
-      }
+      if (!force && !tipAnchorStillHot(anchor)) return;
       var r = anchor.getBoundingClientRect();
       if (!r.width || !r.height) return;
       if (fastTipEl && fastTipEl.parentNode) fastTipEl.parentNode.removeChild(fastTipEl);
@@ -2157,11 +2502,28 @@
     el.addEventListener('mouseleave', hideFastTip);
     return el;
   }
-  document.addEventListener('scroll', hideFastTip, true);
+  document.addEventListener(
+    'scroll',
+    function () {
+      if (tipAnchorStillHot()) return;
+      hideFastTip();
+    },
+    true
+  );
   function hwyCheckEl() {
     var img = document.createElement('img');
     img.className = 'hwy-check';
     img.src = HWY_CHECK;
+    img.alt = '';
+    img.width = 13;
+    img.height = 13;
+    img.draggable = false;
+    return img;
+  }
+  function hwyXEl() {
+    var img = document.createElement('img');
+    img.className = 'hwy-x';
+    img.src = HWY_X;
     img.alt = '';
     img.width = 13;
     img.height = 13;
@@ -2174,8 +2536,196 @@
     parent.appendChild(p);
     return p;
   }
+  function paintEquipPill(parent, spec) {
+    if (!spec || !spec.text) return;
+    var p = addPill(parent, spec.cls, spec.text, spec.title);
+    if (spec.check) p.appendChild(hwyCheckEl());
+    else if (spec.x) p.appendChild(hwyXEl());
+    return p;
+  }
+  function messageBodyText(msg) {
+    if (!msg) return '';
+    var box =
+      (msg.querySelector && (msg.querySelector('div.a3s') || msg.querySelector('div.ii.gt'))) ||
+      msg;
+    return unquotedMessageText(box);
+  }
+  function normPlateToken(s) {
+    return String(s || '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '');
+  }
+  function looksLikePlateToken(tok, plateWordCue) {
+    var p = normPlateToken(tok);
+    if (p.length < 4 || p.length > 8) return false;
+    if (/^(MC|DOT|US|USDOT)[0-9]+$/.test(p)) return false;
+    if (/^(PLATE|PLATES|PLT|PLTS|TAG|TAGS|TRUCK|TRUCKS|TRAILER|TRAILERS|TRLR|TRLRS|TRL|LP)$/.test(p)) {
+      return false;
+    }
+    if (/[A-Z]/.test(p) && /[0-9]/.test(p)) return true;
+    if (plateWordCue && /^[0-9]{4,8}$/.test(p)) return true;
+    return false;
+  }
+  function pushUniqStr(arr, v) {
+    if (!v || arr.indexOf(v) >= 0) return;
+    arr.push(v);
+  }
+  function lastWordIndex(text, re) {
+    var last = -1;
+    var r = new RegExp(re.source, 'g');
+    var m;
+    while ((m = r.exec(text))) last = m.index;
+    return last;
+  }
+  function plateKindFromLeft(left) {
+    var trailerAt = lastWordIndex(left, /\b(?:TRAILERS?|TRLRS?|TRL)\b/);
+    var truckAt = lastWordIndex(left, /\b(?:TRUCKS?|TRACTORS?|POWER\s*UNITS?)\b/);
+    if (trailerAt < 0 && truckAt < 0) return 'unlabeled';
+    if (trailerAt > truckAt) return 'trailer';
+    if (truckAt > trailerAt) return 'truck';
+    return 'unlabeled';
+  }
+  function findEquipMentions(text) {
+    var raw = String(text || '').replace(/\s+/g, ' ');
+    var upper = raw.toUpperCase();
+    var truckPlates = [];
+    var trailerPlates = [];
+    var unlabeledPlates = [];
+    var truckVins = [];
+    var used = {};
+    var m;
+    var vinRe = /\b([A-HJ-NPR-Z0-9]{17})\b/g;
+    while ((m = vinRe.exec(upper))) {
+      var vin = m[1];
+      if (!/[A-Z]/.test(vin) || !/[0-9]/.test(vin)) continue;
+      pushUniqStr(truckVins, vin);
+      var vi;
+      for (vi = m.index; vi < m.index + m[0].length; vi++) used[vi] = true;
+    }
+    var cueRe =
+      /\b(?:LICENSE\s*PLATES?|LIC\s*PLATES?|PLATES?|PLTS?|TAGS?|LP|TRUCKS?|TRACTORS?|TRAILERS?|TRLRS?|TRL|POWER\s*UNITS?)\b/g;
+    var cues = [];
+    while ((m = cueRe.exec(upper))) {
+      cues.push({
+        start: m.index,
+        end: m.index + m[0].length,
+        plateWord: /PLATE|PLT|TAG|\bLP\b|LICENSE/.test(m[0])
+      });
+    }
+    var ci;
+    for (ci = 0; ci < cues.length; ci++) {
+      var cue = cues[ci];
+      var from = Math.max(0, cue.start - 12);
+      var to = Math.min(upper.length, cue.end + 48);
+      var window = upper.slice(from, to);
+      var localRe =
+        /\b([A-Z]{1,4}[\- ]?[0-9]{2,6}[A-Z]{0,3}|[0-9]{1,3}[A-Z]{1,4}[0-9]{1,4}|[A-Z][A-Z0-9]{3,7}|[0-9]{4,8})\b/g;
+      var pm;
+      while ((pm = localRe.exec(window))) {
+        var abs = from + pm.index;
+        if (used[abs]) continue;
+        var cand = pm[1] || pm[0];
+        if (!looksLikePlateToken(cand, cue.plateWord)) continue;
+        var np = normPlateToken(cand);
+        var k;
+        for (k = abs; k < abs + pm[0].length; k++) used[k] = true;
+        var left = upper.slice(Math.max(0, abs - 36), abs);
+        var kind = plateKindFromLeft(left);
+        if (kind === 'truck') pushUniqStr(truckPlates, np);
+        else if (kind === 'trailer') pushUniqStr(trailerPlates, np);
+        else pushUniqStr(unlabeledPlates, np);
+      }
+    }
+    return {
+      truckPlates: truckPlates,
+      trailerPlates: trailerPlates,
+      unlabeledPlates: unlabeledPlates,
+      truckVins: truckVins,
+      any:
+        !!(
+          truckPlates.length ||
+          trailerPlates.length ||
+          unlabeledPlates.length ||
+          truckVins.length
+        )
+    };
+  }
+  function needEquipFetch(found) {
+    if (!found || !found.any) return false;
+    if (
+      (found.truckPlates.length || found.trailerPlates.length || found.unlabeledPlates.length) &&
+      extrasOn('hwy', ['truckPlate', 'trailerPlate'])
+    ) {
+      return true;
+    }
+    if (found.truckVins.length && extrasOn('hwy', ['truckVin'])) return true;
+    return false;
+  }
+  function ensureHwyVehicles(mc, state) {
+    var hwy = state && state.hwy;
+    if (!hwy || !hwy.id || hwy.login) return;
+    if (Array.isArray(hwy.vehicles) || hwy.vehiclesFailed) return;
+    loadHwyVehicles(mc, hwy.id, hwy);
+  }
+  function anyListed(values, map) {
+    var i;
+    for (i = 0; i < values.length; i++) {
+      if (map[values[i]]) return true;
+    }
+    return false;
+  }
+  function equipMatchSpec(ok, text) {
+    if (ok) {
+      return {
+        text: text,
+        cls: 'hwy-mc-pass',
+        title: "On this carrier's Highway equipment list.",
+        check: true
+      };
+    }
+    return {
+      text: text,
+      cls: 'hwy-mc-fail',
+      title: "Not on this carrier's Highway equipment list.",
+      x: true
+    };
+  }
+  function planEquipPills(found, hwy) {
+    var out = {};
+    if (!found || !found.any || !hwy || !Array.isArray(hwy.vehicles)) return out;
+    var truckPlateMap = {};
+    var trailerPlateMap = {};
+    var truckVinMap = {};
+    var i;
+    for (i = 0; i < hwy.vehicles.length; i++) {
+      var v = hwy.vehicles[i];
+      if (!v) continue;
+      if (v.plate) {
+        if (v.kind === 'trailer') trailerPlateMap[v.plate] = true;
+        else truckPlateMap[v.plate] = true;
+      }
+      if (v.vin && v.kind !== 'trailer') truckVinMap[v.vin] = true;
+    }
+    var unlabTruck = [];
+    var unlabTrailer = [];
+    for (i = 0; i < found.unlabeledPlates.length; i++) {
+      var p = found.unlabeledPlates[i];
+      if (truckPlateMap[p]) unlabTruck.push(p);
+      else if (trailerPlateMap[p]) unlabTrailer.push(p);
+    }
+    var truckWant = found.truckPlates.concat(unlabTruck);
+    var trailerWant = found.trailerPlates.concat(unlabTrailer);
+    if (truckWant.length) out.truckPlate = equipMatchSpec(anyListed(truckWant, truckPlateMap), 'Truck plate');
+    if (trailerWant.length) {
+      out.trailerPlate = equipMatchSpec(anyListed(trailerWant, trailerPlateMap), 'Trailer plate');
+    }
+    if (found.truckVins.length) {
+      out.truckVin = equipMatchSpec(anyListed(found.truckVins, truckVinMap), 'Truck VIN');
+    }
+    return out;
+  }
 
-  function paintHwyPills(hwyHit, state, fromAddr, compact) {
+  function paintHwyPills(hwyHit, state, fromAddr, compact, msg, mc) {
     hwyHit.appendChild(logoImg(HWY_LOGO, 'Highway'));
     if (state.hwy && state.hwy.login) {
       addPill(hwyHit, 'hwy-mc-wait', 'Sign in', 'Sign in to Highway');
@@ -2184,6 +2734,13 @@
     if (!state.hwy) {
       addPill(hwyHit, 'hwy-mc-wait', '…', 'Looking up Highway. Click the Highway icon to retry.');
       return;
+    }
+    var found = { any: false };
+    var equip = {};
+    if (extrasOn('hwy', ['truckPlate', 'trailerPlate', 'truckVin'])) {
+      found = findEquipMentions(messageBodyText(msg));
+      if (needEquipFetch(found)) ensureHwyVehicles(mc, state);
+      equip = planEquipPills(found, state.hwy);
     }
     var order = loadSettings().hwy;
     var i;
@@ -2241,6 +2798,12 @@
           var dPill = addPill(hwyHit, db.cls, db.text, db.title);
           if (db.check && dPill) dPill.appendChild(hwyCheckEl());
         }
+      } else if (id === 'truckPlate') {
+        paintEquipPill(hwyHit, equip.truckPlate);
+      } else if (id === 'trailerPlate') {
+        paintEquipPill(hwyHit, equip.trailerPlate);
+      } else if (id === 'truckVin') {
+        paintEquipPill(hwyHit, equip.truckVin);
       }
     }
     var hwyLogo = hwyHit.querySelector('.hwy-mc-logo');
@@ -2581,7 +3144,7 @@
       while (c411Box.firstChild) c411Box.removeChild(c411Box.firstChild);
       var hwyHit = el('span', 'hwy-mc-hit');
       hwyHit.addEventListener('click', openHwy);
-      paintHwyPills(hwyHit, st, threadCarrierAddr(wrap), false);
+      paintHwyPills(hwyHit, st, threadCarrierAddr(wrap), false, messageRoot(wrap), mc);
       hwyBox.appendChild(hwyHit);
       var c411Hit = el('span', 'hwy-c411-hit');
       c411Hit.addEventListener('click', openC411);
@@ -2660,6 +3223,7 @@
     var wrap = el('span', 'hwy-mc-wrap');
     wrap.setAttribute('data-hwy-mc', mc);
     wrap.setAttribute('data-ss-full', '0');
+    if (opts.quoted) wrap.setAttribute('data-ss-quoted', '1');
 
     var a = el('span', 'hwy-mc-link', fullMatch);
     bindHoverTip(a, 'Copy MC');
@@ -2793,17 +3357,120 @@
     }
     return msg.querySelector('.gE') || msg.querySelector('tr.acZ') || msg;
   }
-  function mcsInMessage(msg) {
+  function wrapIsQuoted(w) {
+    if (!w) return false;
+    if (w.getAttribute && w.getAttribute('data-ss-quoted') === '1') return true;
+    return inQuoted(w);
+  }
+  function mcsInMessage(msg, unquotedOnly) {
     var seen = {};
     var out = [];
     if (!msg || !msg.querySelectorAll) return out;
     msg.querySelectorAll('.hwy-mc-wrap[data-hwy-mc]').forEach(function (w) {
       var mc = w.getAttribute('data-hwy-mc');
       if (!mc || seen[mc] || shouldIgnore(mc)) return;
+      if (unquotedOnly && wrapIsQuoted(w)) return;
       seen[mc] = true;
       out.push(mc);
     });
     return out;
+  }
+  function emailsFromAttr(el) {
+    var out = [];
+    function add(v) {
+      var e = normEmail(v);
+      if (!e || out.indexOf(e) >= 0) return;
+      out.push(e);
+    }
+    if (!el) return out;
+    var nodes = el.querySelectorAll ? el.querySelectorAll('[email], a[href^="mailto:"]') : [];
+    var i;
+    for (i = 0; i < nodes.length; i++) {
+      add(nodes[i].getAttribute('email') || (nodes[i].getAttribute('href') || '').replace(/^mailto:/i, ''));
+    }
+    var plain = String(el.textContent || '').match(/[a-z0-9._%+\-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) || [];
+    for (i = 0; i < plain.length; i++) add(plain[i]);
+    return out;
+  }
+  function attrEmailForNode(node) {
+    var q = node && node.closest && node.closest('.gmail_quote, .gmail_extra, blockquote');
+    while (q) {
+      var attr =
+        (q.querySelector && (q.querySelector(':scope > .gmail_attr') || q.querySelector('.gmail_attr'))) ||
+        null;
+      var emails = emailsFromAttr(attr);
+      if (emails.length) return emails[0];
+      q = q.parentElement && q.parentElement.closest && q.parentElement.closest('.gmail_quote, .gmail_extra, blockquote');
+    }
+    return '';
+  }
+  function messageRecipientAddrs(msg) {
+    var from = normEmail(messageFromAddr(msg));
+    var out = [];
+    if (!msg || !msg.querySelectorAll) return out;
+    var nodes = msg.querySelectorAll('.gE [email], .hb [email], span.g2[email], span.gD[email]');
+    var i;
+    for (i = 0; i < nodes.length; i++) {
+      var e = normEmail(nodes[i].getAttribute('email') || nodes[i].getAttribute('data-hovercard-id') || '');
+      if (!e || e === from || out.indexOf(e) >= 0) continue;
+      out.push(e);
+    }
+    return out;
+  }
+  function mcsForSingleKnownRecipient(msg) {
+    var recips = [];
+    var list = messageRecipientAddrs(msg);
+    var i;
+    for (i = 0; i < list.length; i++) {
+      if (isSelfOrCoworkerAddr(list[i]) || isBoardOrSystemAddr(list[i])) continue;
+      recips.push(list[i]);
+    }
+    if (recips.length !== 1) return [];
+    return assignedMcsForAddr(recips[0]);
+  }
+  function barMcsForMessage(msg) {
+    var from = messageFromAddr(msg);
+    var own = mcsInMessage(msg, true);
+    if (isSelfOrCoworkerAddr(from)) return uniqMcs(own.concat(mcsForSingleKnownRecipient(msg)));
+    return uniqMcs(own.concat(assignedMcsForAddr(from)));
+  }
+  function learnMcsFromThread(root) {
+    if (!root || !root.querySelectorAll) return;
+    var fromUnquoted = {};
+    var fromQuoted = {};
+    function addMap(map, addr, mc) {
+      var e = normEmail(addr);
+      if (!e || isSkipCarrierAddr(e) || !mc || shouldIgnore(mc)) return;
+      if (!map[e]) map[e] = [];
+      if (map[e].indexOf(mc) < 0) map[e].push(mc);
+    }
+    var msgs = root.querySelectorAll('.h7, .adn.ads');
+    var i;
+    for (i = 0; i < msgs.length; i++) {
+      var msg = msgs[i];
+      var from = messageFromAddr(msg);
+      var unq = mcsInMessage(msg, true);
+      var u;
+      for (u = 0; u < unq.length; u++) addMap(fromUnquoted, from, unq[u]);
+      if (from && !unq.length) {
+        var hits = findMcMatches(unquotedMessageText(msg.querySelector('div.a3s') || msg.querySelector('div.ii.gt') || msg));
+        for (u = 0; u < hits.length; u++) addMap(fromUnquoted, from, hits[u].mc);
+      }
+    }
+    var wraps = root.querySelectorAll('.hwy-mc-wrap[data-hwy-mc]');
+    for (i = 0; i < wraps.length; i++) {
+      var w = wraps[i];
+      if (!wrapIsQuoted(w)) continue;
+      var mc = w.getAttribute('data-hwy-mc');
+      var who = attrEmailForNode(w);
+      if (who) addMap(fromQuoted, who, mc);
+    }
+    Object.keys(fromQuoted).forEach(function (e) {
+      if (!fromUnquoted[e]) rememberAddrMc(e, fromQuoted[e]);
+    });
+    Object.keys(fromUnquoted).forEach(function (e) {
+      rememberAddrMc(e, fromUnquoted[e]);
+    });
   }
   function svgEl(name, attrs) {
     var n = document.createElementNS('http://www.w3.org/2000/svg', name);
@@ -2893,7 +3560,7 @@
       ev.stopPropagation();
       openHighway(mc);
     });
-    paintHwyPills(hwyHit, st, fromAddr, false);
+    paintHwyPills(hwyHit, st, fromAddr, false, msg, mc);
     pills.appendChild(hwyHit);
     var c411Hit = el('span', 'hwy-c411-hit');
     c411Hit.addEventListener('click', function (ev) {
@@ -2919,13 +3586,46 @@
     }
     return out;
   }
+  function cardStateSig(mc, msg) {
+    var st = mcStore[mc] || {};
+    var hwy = st.hwy || {};
+    var fg = st.fg || {};
+    var found = findEquipMentions(messageBodyText(msg));
+    return [
+      mc,
+      hwy.assessment || '',
+      hwy.fleet == null ? '' : hwy.fleet,
+      hwy.safety == null ? '' : hwy.safety,
+      hwy.connStatus || '',
+      hwy.dnu ? '1' : '0',
+      hwy.login ? '1' : '0',
+      Array.isArray(hwy.vehicles) ? String(hwy.vehicles.length) : '',
+      hwy.alerts == null ? '' : hwy.alerts,
+      (hwy.emails || []).length,
+      fg.hasFg ? '1' : '0',
+      fg.date || '',
+      fg.login ? '1' : '0',
+      fg.error ? '1' : '0',
+      (found.truckPlates || []).join(','),
+      (found.trailerPlates || []).join(','),
+      (found.truckVins || []).join(','),
+      messageFromAddr(msg) || ''
+    ].join('\t');
+  }
   function fillMsgBar(bar, msg, mcs) {
     mcs = uniqMcs(mcs);
-    hideFastTip();
+    var sig = mcs
+      .map(function (mc) {
+        return cardStateSig(mc, msg);
+      })
+      .join('\n');
+    if (bar.getAttribute('data-ss-sig') === sig && bar.firstChild) return;
+    if (fastTipAnchor && bar.contains(fastTipAnchor)) hideFastTip();
     while (bar.firstChild) bar.removeChild(bar.firstChild);
     mcs.forEach(function (mc) {
       bar.appendChild(buildMsgCard(msg, mc));
     });
+    bar.setAttribute('data-ss-sig', sig);
   }
   function paintBar() {
     dropNode(document.getElementById('ss-intel-bar'));
@@ -2949,17 +3649,13 @@
     }
     var keep = [];
     var i;
-    var subjMcs = mcsInMessage(root.querySelector('h2.hP'));
+    learnMcsFromThread(root);
+    var subjMcs = mcsInMessage(root.querySelector('h2.hP'), true);
     for (i = 0; i < msgs.length; i++) {
       var msg = msgs[i];
-      var mcs = mcsInMessage(msg);
-      if (i === msgs.length - 1 && subjMcs.length) {
-        var seenMc = {};
-        var k;
-        for (k = 0; k < mcs.length; k++) seenMc[mcs[k]] = true;
-        for (k = 0; k < subjMcs.length; k++) {
-          if (!seenMc[subjMcs[k]]) mcs.push(subjMcs[k]);
-        }
+      var mcs = barMcsForMessage(msg);
+      if (i === msgs.length - 1 && subjMcs.length && !mcs.length) {
+        mcs = subjMcs.slice();
       }
       var host = messageHeaderHost(msg);
       var bar = msg.querySelector('.ss-intel-msg');
@@ -3337,6 +4033,16 @@
       var mc = w.getAttribute('data-hwy-mc');
       if (mc) keep[mc] = true;
     });
+    try {
+      var addrMap = loadAddrMcMap();
+      Object.keys(addrMap).forEach(function (k) {
+        var rec = addrMap[k];
+        var i;
+        for (i = 0; i < ((rec && rec.mcs) || []).length; i++) {
+          if (rec.mcs[i]) keep[rec.mcs[i]] = true;
+        }
+      });
+    } catch (eKeep) {}
     Object.keys(mcStore).forEach(function (mc) {
       if (keep[mc] || inflight[mc] || c411Inflight[mc] || hwyExtrasInflight[mc]) return;
       delete mcStore[mc];
@@ -3433,7 +4139,17 @@
     if (!node) return;
     if (node.parentNode) node.parentNode.removeChild(node);
   }
+  function commitOrgMcFromPanel() {
+    if (!panelEl) return;
+    var inp = panelEl.querySelector('.ss-org-mc');
+    if (!inp) return;
+    var n = normMc(inp.value);
+    if (n) saveOrgMc(n);
+    else setOrgMcNeeded(true);
+    syncMcBadge();
+  }
   function closePanel() {
+    commitOrgMcFromPanel();
     if (panelEl) panelEl.classList.remove('ss-open');
     if (shadeEl) shadeEl.classList.remove('ss-open');
     var p = panelEl;
@@ -3502,6 +4218,12 @@
       });
       return labEl;
     }
+    function clearDropMarks(host) {
+      if (!host || !host.querySelectorAll) return;
+      host.querySelectorAll('.ss-set-drop-before, .ss-set-drop-after').forEach(function (n) {
+        n.classList.remove('ss-set-drop-before', 'ss-set-drop-after');
+      });
+    }
     function fill(which, meta, host) {
       if (!host) return;
       while (host.firstChild) host.removeChild(host.firstChild);
@@ -3558,17 +4280,30 @@
         row.addEventListener('dragstart', function (ev) {
           ev.dataTransfer.setData('text/plain', item.id);
           ev.dataTransfer.effectAllowed = 'move';
-          row.style.opacity = '0.5';
+          row.classList.add('ss-set-dragging');
         });
         row.addEventListener('dragend', function () {
-          row.style.opacity = '';
+          row.classList.remove('ss-set-dragging');
+          clearDropMarks(host);
         });
         row.addEventListener('dragover', function (ev) {
           ev.preventDefault();
+          ev.dataTransfer.dropEffect = 'move';
+          clearDropMarks(host);
+          var box = row.getBoundingClientRect();
+          if (ev.clientY < box.top + box.height / 2) row.classList.add('ss-set-drop-before');
+          else row.classList.add('ss-set-drop-after');
+        });
+        row.addEventListener('dragleave', function (ev) {
+          if (row.contains(ev.relatedTarget)) return;
+          row.classList.remove('ss-set-drop-before', 'ss-set-drop-after');
         });
         row.addEventListener('drop', function (ev) {
           ev.preventDefault();
           var fromId = ev.dataTransfer.getData('text/plain');
+          var after = row.classList.contains('ss-set-drop-after');
+          clearDropMarks(host);
+          row.classList.remove('ss-set-dragging');
           if (!fromId || fromId === item.id) return;
           var arr = s[which];
           var from = -1;
@@ -3579,7 +4314,9 @@
             if (arr[k].id === item.id) to = k;
           }
           if (from < 0 || to < 0) return;
+          if (after) to += 1;
           var moved = arr.splice(from, 1)[0];
+          if (from < to) to -= 1;
           arr.splice(to, 0, moved);
           saveSettings(s);
           renderPanelLists(q);
@@ -3694,12 +4431,16 @@
     cSec.appendChild(cList);
     body.appendChild(cSec);
 
-    var orgBox = el('div', 'ss-org-box');
+    var orgNeed = orgMcNeeded();
+    var orgLast = loadOrgMc();
+    var orgBox = el('div', orgNeed ? 'ss-org-box ss-org-box-need' : 'ss-org-box');
     orgBox.appendChild(
       el(
         'p',
         '',
-        'Your company’s MC. We never show Highway/Carrier411 results for this number, so your own authority is not treated as a carrier you are vetting. Digits only — no “MC”.'
+        orgNeed
+          ? 'Enter your company MC. This is important. Digits only — no “MC”.'
+          : 'Your company’s MC. We never show Highway/Carrier411 results for this number, so your own authority is not treated as a carrier you are vetting. Digits only — no “MC”.'
       )
     );
     var orgRow = el('div', 'ss-org-row');
@@ -3709,65 +4450,29 @@
     orgInp.inputMode = 'numeric';
     orgInp.className = 'ss-org-mc';
     orgInp.maxLength = 8;
-    orgInp.value = loadOrgMc();
+    orgInp.value = orgNeed ? '' : orgLast;
+    if (orgNeed && orgLast) orgInp.placeholder = orgLast;
     orgInp.setAttribute('aria-label', 'Your company MC number');
     orgRow.appendChild(orgInp);
     orgBox.appendChild(orgRow);
     var orgMsg = el('div', '');
     orgBox.appendChild(orgMsg);
-    var orgSaved = loadOrgMc();
-    function setOrgMsg(kind, text) {
-      orgMsg.className = kind === 'err' ? 'ss-org-err' : kind === 'warn' ? 'ss-org-warn' : '';
-      orgMsg.textContent = text || '';
-      while (orgMsg.firstChild && orgMsg.querySelector('button')) {
-        break;
-      }
-    }
     orgInp.addEventListener('keydown', function (ev) {
       ev.stopPropagation();
     });
     orgInp.addEventListener('input', function (ev) {
       ev.stopPropagation();
       var raw = orgInp.value.replace(/\s+/g, '');
-      if (/[^\d]/.test(raw)) {
-        setOrgMsg('err', 'Numbers only.');
+      if (raw && /[^\d]/.test(raw)) {
+        orgMsg.className = 'ss-org-err';
+        orgMsg.textContent = 'Numbers only.';
         return;
       }
-      setOrgMsg('', '');
-      if (raw === orgSaved) return;
-      if (!raw) {
-        saveOrgMc('');
-        orgSaved = '';
-        return;
-      }
-      orgMsg.className = 'ss-org-warn';
-      orgMsg.textContent = 'Are you sure this is your MC? We will not vet this number. ';
-      var yes = el('button', 'ss-org-ok', 'Confirm');
-      yes.type = 'button';
-      var no = el('button', 'ss-org-no', 'Cancel');
-      no.type = 'button';
-      yes.addEventListener('click', function (e2) {
-        e2.preventDefault();
-        e2.stopPropagation();
-        var n = normMc(orgInp.value);
-        if (!n) {
-          setOrgMsg('err', 'Numbers only.');
-          return;
-        }
-        orgSaved = saveOrgMc(n);
-        orgInp.value = n;
-        setOrgMsg('', '');
-      });
-      no.addEventListener('click', function (e2) {
-        e2.preventDefault();
-        e2.stopPropagation();
-        orgInp.value = orgSaved;
-        setOrgMsg('', '');
-      });
-      orgMsg.appendChild(yes);
-      orgMsg.appendChild(no);
+      orgMsg.className = '';
+      orgMsg.textContent = '';
     });
-    body.appendChild(orgBox);
+    if (orgNeed) body.insertBefore(orgBox, body.firstChild);
+    else body.appendChild(orgBox);
     panelEl.appendChild(body);
     panelEl._hwyList = hwyList;
     panelEl._c411List = cList;
@@ -3778,6 +4483,7 @@
     host.appendChild(panelEl);
     shadeEl.classList.add('ss-open');
     panelEl.classList.add('ss-open');
+    paintLoginNotes();
     renderPanelLists('');
   }
 
@@ -3972,6 +4678,8 @@
       x.addEventListener('click', function (ev) {
         ev.preventDefault();
         window.__ssSetupSnooze = true;
+        setOrgMcNeeded(true);
+        syncMcBadge();
         hideSsCallout();
       });
       card.appendChild(x);
@@ -4012,6 +4720,7 @@
           return;
         }
         saveOrgMc(n);
+        syncMcBadge();
         ackNotesVersion();
         hideSsCallout();
       }
@@ -4069,7 +4778,13 @@
     if (document.getElementById('ss-ss-callout')) return;
     if (!document.getElementById('ss-hwy-c411-set-btn')) return;
     if (!loadOrgMc()) {
-      if (window.__ssSetupSnooze) return;
+      if (window.__ssSetupSnooze) {
+        setOrgMcNeeded(true);
+        syncMcBadge();
+        return;
+      }
+      setOrgMcNeeded(true);
+      syncMcBadge();
       showSsCallout('setup');
       return;
     }
@@ -4084,6 +4799,9 @@
     bindSettingsClicks();
     var existing = document.getElementById('ss-hwy-c411-set-wrap');
     if (existing && existing.isConnected && existing.querySelector('img.ss-set-icon')) {
+      var existImg = existing.querySelector('img.ss-set-icon');
+      if (existImg && existImg.src !== SET_LOGO) existImg.src = SET_LOGO;
+      syncMcBadge();
       pinOpenCallout();
       return true;
     }
@@ -4098,6 +4816,7 @@
       !wrap.contains(slot.before) &&
       wrap.querySelector('img.ss-set-icon')
     ) {
+      syncMcBadge();
       return true;
     }
     if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
@@ -4113,12 +4832,13 @@
     logo.className = 'ss-set-icon';
     logo.src = SET_LOGO;
     logo.alt = '';
-    logo.width = 32;
-    logo.height = 32;
+    logo.width = 50;
+    logo.height = 50;
     logo.draggable = false;
     btn.appendChild(logo);
     wrap.appendChild(btn);
     slot.parent.insertBefore(wrap, slot.before);
+    syncMcBadge();
     pinOpenCallout();
     return !wrap.contains(slot.before);
   }
@@ -4199,6 +4919,23 @@
     renderPanelLists(q);
   }
 
+  function isOurUiNode(n) {
+    if (!n || n.nodeType !== 1) return false;
+    var id = n.id || '';
+    if (
+      id === 'ss-intel-bar' ||
+      id === 'ss-hwy-c411-set-wrap' ||
+      id === 'ss-hwy-c411-set-btn' ||
+      id === 'ss-hwy-c411-panel' ||
+      id === 'ss-ss-callout'
+    ) {
+      return true;
+    }
+    var cls = n.className ? String(n.className) : '';
+    return /(hwy-mc-wrap|ss-rate-wrap|ss-intel-msg|ss-intel-host|ss-intel-tr|ss-intel-card|ss-fast-tip)/.test(
+      cls
+    );
+  }
   function nodeMightHaveMc(n) {
     if (!n) return false;
     if (n.nodeType === 3) {
@@ -4206,9 +4943,7 @@
       return t.length >= 4 && (/MC/i.test(t) || /\d{4,8}/.test(t));
     }
     if (n.nodeType !== 1) return false;
-    if (n.id === 'ss-intel-bar' || (n.classList && (n.classList.contains('hwy-mc-wrap') || n.classList.contains('ss-intel-msg')))) {
-      return false;
-    }
+    if (isOurUiNode(n)) return false;
     if (n.childElementCount > 40) return true;
     var s = n.textContent || '';
     if (s.length > 4000) s = s.slice(0, 4000);
@@ -4216,8 +4951,9 @@
   }
   function removedNeedsScan(n) {
     if (!n || n.nodeType !== 1) return false;
+    if (isOurUiNode(n)) return false;
     var cls = n.className ? String(n.className) : '';
-    if (/(hwy-mc-wrap|ss-intel|\bh7\b|\ba3s\b|\bhP\b)/.test(cls)) return true;
+    if (/(\bh7\b|\ba3s\b|\bhP\b)/.test(cls)) return true;
     if (n.childElementCount > 15) return true;
     return false;
   }
@@ -4234,7 +4970,7 @@
       if (m.addedNodes) {
         for (j = 0; j < m.addedNodes.length; j++) {
           var n = m.addedNodes[j];
-          if (n.id === 'ss-intel-bar' || (n.classList && (n.classList.contains('hwy-mc-wrap') || n.classList.contains('ss-intel-msg')))) continue;
+          if (isOurUiNode(n)) continue;
           if (nodeMightHaveMc(n) || (n.nodeType === 1 && n.childElementCount > 8)) {
             schedule();
             return;
@@ -4326,6 +5062,7 @@
     }
     bindCopyFilter();
     resetHwyCacheOnUpdate();
+    probeSessions();
     window.addEventListener('resize', function () {
       var c = document.getElementById('ss-ss-callout');
       if (c) placeSsCallout(c);
@@ -4353,6 +5090,7 @@
       }
       armObserver();
       kickScan();
+      probeSessions();
       refreshC411WrapsFromCache();
       retryClickedC411();
     });
