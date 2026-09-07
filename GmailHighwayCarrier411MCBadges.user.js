@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail Highway Carrier411 MC badges
 // @namespace    shipsierra.highway.gmail
-// @version      1.20.4
+// @version      2026.36.7.12
 // @description  Highway and Carrier411 carrier info next to MC numbers in Gmail.
 // @author       Ivan Karpenko
 // @copyright    2026, ShipSierra.com (Ivan Karpenko)
@@ -39,9 +39,9 @@
   var CACHE_KEY = 'hwy_mc_cache_v10';
   var C411_CACHE_KEY = 'c411_fg_cache_v1';
   var SETTINGS_KEY = 'hwy_c411_badge_settings_v3';
-  var SCRIPT_VERSION = '1.20.4';
+  var SCRIPT_VERSION = '2026.36.7.12';
   var SCRIPT_TITLE = 'ShipSierra.com Carrier Check on Hwy/C411';
-  var RELEASE_DATE = 'September 4, 2026';
+  var RELEASE_DATE = 'September 6, 2026';
   var ORG_MC_KEY = 'ss_org_mc';
   var ORG_MC_NEED_KEY = 'ss_org_mc_need';
   var NOTES_VER_KEY = 'ss_notes_ver';
@@ -50,12 +50,18 @@
   var ADDR_MC_TTL = 24 * 60 * 60 * 1000;
   var CALLOUT_BG = '#fff6d9';
   var CARET_PX = 11;
+  var HWY_FAIL_REPLY =
+    'Thanks for your interest in this load. Unfortunately you do not pass our Highway.com requirements, so we are unable to proceed.';
   var RELEASE_NOTES =
-    '• Pause in settings stops all scanning and hides badges until you turn it back on. A red 1 on the truck means it is paused.\n' +
-    '• Conversation-mode previews wrap carrier $ / k quotes as rates and use them as the bid, without putting $ links on the left inbox list.\n' +
-    '• Quotes like 7.5k, 11k, and 11.3k count as dollar amounts on the card and Copy MC + Rate.\n' +
-    '• Copy MC on the carrier card copies MC + the latest carrier rate.\n' +
-    '• ZIP codes, fax, phone numbers, and dollar amounts like Rate $3200 are not treated as MC numbers.';
+    '• Fail (envelope) opens Reply or Reply all on that carrier’s email to say they do not pass Highway.\n' +
+    '• Pause in settings stops all checks. A red 1 on the truck means it is paused.\n' +
+    '• In a thread with many carriers, each bar’s $ is that sender’s bid, not another company’s.\n' +
+    '• Expanding a collapsed email still shows the carrier bar.\n' +
+    '• Turn on Cargo INS or other extra badges in settings and they load on bars already open.\n' +
+    '• Copy next to the MC copies MC only. Copy next to the $ copies MC and the rate.\n' +
+    '• Dollar and k quotes in the email are clickable rates. They are not links on the left inbox list.\n' +
+    '• Hover the $ on the bar to highlight that amount in that sender’s email.\n' +
+    '• Domain tooltip shows who emailed you first, then the Highway emails.';
   var HWY_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAHGSURBVHgB7ZZNTsJQEMdnWqWwqwsjyx5BtxJjOQF6AnoDuYF4MkgMuhRPQNlh3LCyBdOOry2B8j4LYWd/m5fMTOf937yPKUBNzX8HTQHRpD1EpGfOPG3eft2UDfHb1YwNXtlGhC+tzmIIGiwwKUTqC0aCucT2KSRHegIDWgHRa9sHblWFKgh5UwqijQDcTY7jBICdBgpPCBVE5RPY+iooBUSjtoeAfZmPEpwK8xMuFal8GrkuHCoAGuCrXLaVCJPZkExlsdk2rBwngEMFIKTK0jU638JkiWWrKpDRU88jYT25vE7R+gA1ocLuqT5g29Zt3S3GvP1MFpwgDgwPhAcHgjY9sGHM26VbwA7fPZwYtqC+7DAKAtjLF8ARKzSRHcYfp+WDSYD05TsRtuRg7211fvcdmoGeUO0iVmJ0QYOzWl1gd7m9MfuHsAEBGLAofZRdw4zonS2A9AuIG80BG4bbfGVnlfKfr39Dla8Zx7q3oJiQa1BbAcrGU4Lt17JcPsGf+0grgm9QuwqoG0/54xDMQcaYcoPKBegaD5d8bowBrBCza1BFBTSNZz+3eXVphSqVG5RV5E2Nfy4bQmNEBZEbelBTU8P4A46qjYFyL5/4AAAAAElFTkSuQmCC';
   var C411_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAC1UlEQVR4nMSWTUwTQRTHZ5cWqkAopAoVFA2CihEwaow1ICSGg0D0oKLx4MFEL3Iw4SAYY4gQ4sfJePOgXvwIEBWDMR4Uw4cGjdHwWTCBgBJaU8XWUtvd7vp/W7M0bS3hsOs7/Dp9b2by/pl5b9ZQd+sUY2xi1s7+bUFRjvJIbCnLz9oE8kxjM3yeG8cPx3Mxw6FMOSUNn/83aE23gmvSc0D3ghu0fx0FjXxixFr7LPm1VxA/LAZFcNv6ErDlxDUw2ZQaMcfrIx2tbc1gz3A3bcovbqu5Au5AS2nMgBAQwMrt1WD9wQvgT28AvN7eC844f4A5Gcng6ard4LqsdPBqB+l4NvAUTOATdFJQFifc1dgNTjt/gYdbO0DB71ejkt+rju+erwVL8rPBo601oMvjYrrcoqgCCIp0cyqLq5V/FG560E9+iWqCNxrJLfgolkD5ZaaZwK7+IVVBedF+sK33vi4KuOgS5qjzZJqzVMebiTkwxUBTZUVfqBPJEs0szKWZVbZC0PGdTiV1BdWKLMvsf1Uyp+KvyXLMxaFTsVrSGNU8jc0ppsUNlOT1OAMuLKMg5SITR78Mqf4jtnyw8+2Ymlgor2yLGaw/VgG2vfwA7tycCzrm6cx4TpdKNsjKnQkI1GdKt5SDeavpJbIV7FMnXay1gdMO6j/vxmYUH2UmiKT1Sc8gWLO3GPT4PGDnQDtoMq5keigI9byGQ01gxdbKiPCUc1Id3z5HtT00+Q3sG5kCC9dawNKiDeqcszfPgEmJdJdkpVq076YuN2WUkWqJGS67RG+ZOTkDPL7nJLhj4y6wwEp1Oz47Ar6fGADv9d4BA8orEm7aK5CjqtS9MA82P6JXbHD6U0RUFMSYGxk4Y0y/vgpeDb8Abzy/AgbEAFu+SVGLtFcgKR3x8uNGsM/+GkwyGJdcFhTiRaWwL1ftFTQ8rGN0Wz6y5ZskcHGieauoB2uu4A8AAAD//1ZDwTcAAAAGSURBVAMARiLtUypmc+4AAAAASUVORK5CYII=';
   var SET_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAd4klEQVR42u2cd5yV1bnvv2u9726z95Q9jQFGGaQozUbHRPAoehMJFgTJTWzR2BLRaM4xtjOMmkuiNyfXSDzJTTQxGJKIaXotETwwIiOgYA0RKQMMZQpT955d3rLW/WOXKQxNMcn93P0b9oeZXd613udZT/utZ23IIYcccsghhxxyyCGHHHLIIYcccsghhxxyyCGHHHLIIYcccsghhxxyyCGHEw7xzzQXrTWLFy8WW7ZsEQBjx44VW7Zs0StWrHABtNZiwYIF8v9lga9YsUIB+p9iMlprMX/+fGPmzJnm/68WYP4jhJ5ZxUIIF3Azr02dOnVQQ0ND4ZmTJo1qb2sRZ4w/Y0xzW9uGPzz77OsA11xzTUVjY+PUhJNwvdIrAFxcwMAwDHBTl3JdFwxSz9EzQmYgA8AwSLoxLNfFMAx8mBiGgeu6ODjp58GHL3399DWs1FUMrwGu0Xv66QuDQeo6Li5G+kmttRBC2BdccMEbd999dyTtffTfVQHz5883egt96tSpg0aMGH1uWVnJuWVlJZPLBw06tThcFCovLzf9/gAlJaW89OILXbt37Dht06ZNB4YNG/bMAw/cf77jukghEEKg0QgECAlaZ26WtIL7Kx8NKFwMYZIn/fiED4XC0haOdhEIPNKDBxOlFXEdJ6EsJAIpJVopNALZ/9ro1Hg6NW5qrNTcdFralpXkpz/9yRLg3urqaqOmpsb5eylAaq0RQrj19fX+h5cs+WJpOHz5KcOHXzxm7NiikSNHEA6H8Xg8CEBp3GQyicdjqpGjRhVMmzZt/KZNmw5UVFSMGjFipAso4FPHgo/tHayMvsEHsS3ssxuJ2N2Y0qTUKOIUXxWTg2cyNTSRQgpOhAwcwAwEguUAs2bNoqam5rN3QfPnzzdWrFjhCiE499xzv/jM8uU1V1x22aSJZ59FuLgErV1lWbbq7o5Jx7GFUi5aC0MpRSgUkkJI/frrr0cAXO1aSikjkUwIQxrHpQBHuwRlHg4Of2h/kadalrMp+g6ddhQBGMJIWRLgaoXCxRQmlf7BfDE8mxvLr2Zs4FSSbhKlFYYw0McQSzPWaBiGltIwtNb23ysGiHTUd0tLh466+pqF3519wQXzp0+fTigUVPF4XLe1HZSu60oQUgiBlBm/LVFKIYTQoVBIlpWF8wFQSCklhjSQ8tjl72qXoCePD2J/4+49NazuWIepJXlGHqXe4l5OJDPxlCq01rTaHfzkwC/5Xeuf+ObgG/i3wd/EixdLWUhx7HOQUmIYEtHPL34mKV11dbUUQmghpL5kzpwb/seSxW/e853vzJ99wfmuEKiWloMyEokaSmkhpURKQc+0+vhvVVBQyJgxE0an5H/8abOrXfymn+fanueiLVdQ215H2Cgk3wxlX089FCr9cLWLo11cFB5hUuIpxlUuNbsf4fJt19LsHMQnvSitjls26rPOgqqrq+VDDz2ktNbeW7/5jce/fOWVN06aNAmlXKe1rc1UygFxaBBLmSsgRB8pe71eOiMRBfR8Rhyf8JcdXMHNO+4iQIAiswBHu8eetaFxtINEUu4pY2XbGi6zruYPpz5NuVmKrW3k8axj1VcF8kQL/8EHH1RKqeBdd9310jduueXGKVOmOIlEQkciUdN1XaSUAwq/1x1n/abWGo/HQywadVNW0cdIji58w8/KjjV8c+fdBEUQjzSPS/j9FWFrm1KzhM3R9/najkUkdTKd5Rx7XdU/dJ1ABWhRU1OjtNbBu+6864VFi247/5RTqpxYLGomEnGhtcJID54R8GE1kL4hpRQej8Gw4Sefml75eqAg1/96Go1Hemi0m1m06x6kkphCfiKXIRCYwsj6+4wSVrbXsmT/Y3ilF6XUUe6plwH0m4N5ooqrxYsXi7q62Xmnn376nxctuv280tISJ5GwzEQiiRS9lq+WfYR8JIZEa41hePD5/OUDrZfeN51Oc9M3qfEaBo/sf5ydsd2UekpwtPOJhG9rh3Ynild6Ccq8rEsqMYt4ovEpLg9fzBl540m6SSTykNrjEAU47om3gMWLFxs1NTVqyNAhP/nGrbecX1ZWYltW0kwk4vSdT2YJi14PmX70/rtHqKZpYFmWPaCABrhZhcInvWyNbee3B/9IoVHwKYRvU+4p5ZHhi7kwPIu4SiDTxZ8hDLqdGEubnszOQxxDcJJSnFgLmDlzpllTU+PMvfTSf7/l5pu/WlJSbHd0dHr6rlB9HLyfRvRK74QAV2l5HNaIMATPtT1Pq91GqVn8ify+FJKYG+fRU2qYUzybayuu5MzN/0LEiWAKE1e75MsQr3asZmdiN8O9J2Np6+gBuV/6bJ6AIsu5+uqrL7vmmqtrpk6d5nR1dZqFhYX9fHp/19I73Tz0edd1IV36e70evB7TATCkOKoVGMLAdm1Wdb6ephmOn3g0hclBu5WvD76KOcWzAdgUeZ+IE+1TgJnSpNlqpbarjlPKh6EclaohhPjsybh0xuNefPHF413lPhWJRPWyZ54xvB5T2LaFYZjodEaTMTulVIaD6qME0plEJtDl54fShRhCSoPOrkhpml/RR86xNT7hZUdyFzsS9fiEd8DgKBBIIXEHsAxDSKJuNxOCY/jusPvQaPYnG7lh2x24uHgw+ihVABu7N3MdXz6sW0zNQQ+Yhn5SBYiamhpWr15t/vDxpcukN6/oh4//2O1qbzVM00O4tJSCgiKU61K/cwdev5+y0nK8fl+vyYjMP9AaaUi2bd3KFZddxrx5lxOJdGIYHmEYBkMHDxmhlBJP/OcT6qhlvwG7k3vocLoIijxUv9In49vjboJ8I9QnjRQIlE4RaEtHfp9CswCN5vad93HAaqLYDPeJJxqNKUx2JnahVIqe+LvQ0TNnzjTWrl3r/PCHj/3g8xdcdGa4tMx56Y/PmT7Tw7CRozhn1vlYySTKcfjTc79BAmdPmUrVyFFYtoXEAJFSgtYKn9fHjm1bMbTi5ptvwjQ9DBpUgRACn89LKBR0hBD8+Iknjho/AA66bTjaOWQ1CgRJnWSwt4IJeWOo7axDoZDIbGBtsQ/ycNW9TMufBMDj+3/O860vU+YpPSSYa60xkLSrTuI6nmVW+wfj3m5WSvPTZUEzZ840a2trndmzZy8Yf/akOwZXnuysWfWq2dLYhC8Q5IyJU4hEukhaFknLwrEdHMfBsm2SySRWwiJpJUgmkySTCSzLojvWzYa6N7js0ksJBAJ0d0ewrDjJZJxkMolSShyuAhvIxVjaPoKL8vHrU3/C78b8nIer7qXD6UQKiSkMOpxOLgyfx51DbwXg3egH1Ox+lLBZNKC7ylqUslOB/rDZtTgsGSGP1+/X1tY6X5o9e3jl8JE/Hj3udPXXD9+Xe+t34PF6mDRjBqbHzPjvviSX6EnUhMgEKo3fH2Drhx9QUVrMhRddSFdXF6ZpIEQqp5ZSZm/KMMQRC7AMgiIvQ6f1EVQqw4KgkQfADRVf5e7KRbTabbhaUewJ86MRSzCEpFvFuHX7v2Fr+7DMp0Cg0OTJAF7hOaaKWH0KKkLU1NQwf/58I1Q++JlJU2eUdra38s76Oiml5NTx46k8aRjJZDLLVArZU1CJdNDVgmyxZBgmse4of31vM9dcfRWGNA5ZIUKIXgtIHjELEmkjGeQtwyf7ZkCalLtIKIt5W65lW3wnAA9V3cPXK66iKdHAf5zyIKf4hyEQLN79CG9H36XACB129SNSlEeZWUJA+g//viOIXB6P3xdCKNvV3ztj8tQZ/mDQWf/GWplMJCgqLuXMSdOIxbr70sRap3aIeqWZmZVrejz4fD5e+8vLTJs6mWnTphKNRtKfF+n40N+ExRFTUCFSO1aneKso8xRja6ePP1ZoAtLPzsRurvzoehqtZgC+P7yaJ0/7CfNLLwHgxbaVPLH/SUrT1zhSsebgMCZwKghxSMAf0E3KT6CAjN+fM2fOnJFjxn178EnDnA/f3Ww27WvA9HiYPONzqdUmenJgrXWWIxFCY5gmfr+fQF4eXq+PzrY2fv+b5ZQVhlh02zeIRruR0ugjZCH659T6iFWwQGBpm0GeMibkjSWRrlz7k3Rhs5CPYttZ+NENRNwoQSOPr1V8BYXigNXE7TvuxSf9HJ3e0ZjC4Jz8KT37COLItYo8oj0cxu+vWbPGnTt37pDSwUP/96jTxumm/Xvlh+9sAq0ZPXYc5YMqsBKJnlzaMPD5/fj9fqQhkVISi0ao37GdjXVvsOrF53nr9dXMPu9zfP/7S3AcF8tKorXqV6DpPlRGbyKrr//vReChEFLwpfBFuLgD0gO2dig2i1jftYmrt95KUlkoncqG7tz5APuSBwhI32FXdEbYCZXklEAV54Sm4Cr3mNJQpZzjU8CWLVuEEEKH8oueOnvy9MFCSLXhjdelchyKSss5a/J0XKXID+WTF8hLFTJdXdRv+5iNb67jYEszyUSCAw27aNmzg6ElBZz3+Wl89SsLGTtmDK+88goffPD+MVWP8ig8UOo9qY6EL4UvYnTeCOJuAnkYJZR6inmh9S/cs+shutwIP298hj+3vkzYU3RU+sIQBlEVY2HJ5YQ9RVjaOsYKWB97HTBz5kxzxYoVzpy5c++cMHHyRcH8Amdd7WrTSSYoLC7mjImT6exsp7nxAK0Hm+lobcVKJgj4fZSWlDBu9HAqwvkMGTqUyspKkskEUkp8fh9+X4BwOMzYsWMJBAIo1+mVRcg+fr3nD9mvshSHdEBIkSq0is0wiyq+zq077yYgAqgBfLmtHco8pTzVuJwX21bSareRf6Sgm52dJO7GGRkYztfLvoqjnGz7SX8L7a8UKT3HpoAMz3PttV+fYSt7SVdHu1u3ttY4sLeByspKuro6eevNNzANSXlZKaOqhnPy56ZSXlaOz+cjaSWxkjYbujagtSYcDlNUVEg4XExeXhDTNFHKwbYtbDvZJ3hn3Yvuv1t7FBIufbOGMLCUxTVlX+bFjlW80vYaJWZ4wICqUASkn4N2Kx7hOepoIv2TIMnDJ91DmbeUuBPH7FdgHc4a+j9tHoHf10uXLq347W9/t7yktNT73tvrlWmYYsb0qYwefSojTqli8OAhBEMhbNumra2Vg60HaW5uwjBNCgvDjBw5ikg0ysgRIxg7bhyRSASlFJaVxLKSCJEJtLJX8O2bOh5uB0xrccjN9F51Go2JYGnV9/hC4kp2xnZTZBYcVgmeY8jjBQJDGDTZzdx/0l1cXjyHuJPAEPKYGd/+gX1ABcyaNcuora11vnHbbf/r0f/5yLCVf3nVOedzM8wzzjgTKQWdnREaGvbw0cdbiXXH8Xq9lJYWM7zqFMrKylIuRSm8Ph/mh+8Ti8WIRqNYloWUsldpnimmRB+3kinSDjfrlNJ6fj9kR0yniD1LOQz1DuZ3I59k/ravsSNeT4kZxtHuIcI+mvANYeBql2anhW8NuYXqof9Kwk1iSHlIoO9tjcfNBWVcz8QpUy5ZuGDBgnh3zJk8ZYo5bdoMOjs7WbduLdFojIqKCsaOGUtFxSDy8vKQ0sC2bRzHRSmVUoDHg98fIJAXJBQKYRhGvw2J3pVtqnpWSpNMWgNW8kof/ib7K0JrjSEkCTfBmMAoXh7zW26u/zYr29eQL/Pxp7OcTAfb4Va8THfcdTpd+E0fj1bVcEfFTSRdK12tiGPaKDpcO7TZP+VcvHixmjNnztC5l1zyn16vj61bP5Lz5s2nvb0dr9fL7NkXEgyGUMqlu7ubaDRCR0cHlmXjODaOk+J+bNvB6/Wxfft22tvbSSTiJBLxtAXIQ6gEKSWu6xIMBhk+vCr9ev9Zqz7Cz5T1A1lBD1lmkFAJTvIM5c+jl7G06Ul+3PgkexJ78QkvfuFPNWX16sbQOuWWbG0Tc1P+fVb4HP596LeZGppIwk1kY8GR2iAH3LFzj0BHp1NOdfsdd3xv2vRpg9fWrnWvvuorhpAGfr+PlpZmGhsbaWlpIR6P4zipVSuFwDQ9eLwmHo8HmW6cCgZDJJOJtGU4OI6LlD08Ucb9pPLjVOWbEqpO1wAia02Z1Mh1XVzXPYRTya5ZMfDWZcyNIRDcUXYTVxTO4dn2P/N/2l7lb/GP6XQ6sZXTk4MJgV/6GewtZ1r+JK4svpTZBbPwCJNoMoohjWPehM8sDsMwtBBC9edazP4thJdffvkFF1988Vffe+dd95K5c43de/awc+dOCgryaW5qJpRfwMknnUxhUSHFxSWEQiFM04MQAtu2saxURqO1JhgM4jgOgwYNYuzYscRisQFWRV9/r5RLMpkADJRyME2TUH4I0zRdj+nFMAyCweCn2kat9A7lztCt3HnSrRygma3WdvYm9hNRUUxMSjxhRviGcao5Cj++Pp8NEfqkwxqAtF07OJACxLPPPqumT58eqKoa/h/79x/QZ5x+ulhdW8vaug007t/LXd+6nS/NnUs8HicQCGBZSbZt28bOnbuIxWIUFRUxcuQITqo8iUTCIpGIozXE4zFisRjd3d29FKD7ZQ2i136wQEqB4zjk5eXJhoYG1r6+dvRV1163euXKVcP27t2H3++XrutiSInH6+216iVKudhWEq1BpLvu+lub1gqFwhQGXuHFKzzZvVwHQSMR9lHPSvUKSW2lY0EPN5XauFEIwOv1pXb/erXSpKr6nm5p13UoKSmJIURja1vHHwCeeOIJnVVAmmhz5l057wtVw6smTJ482d2wfr3x9nsfkpcX4IH772XMaafR0tJCYUEBGzZs5Omnn2bjxo0cPHgQy7bx+XwMHVLJhRddyHXXXUtpSUl6EmRp5Wy/fj/iPBMTMiSc47jk5eVx8OBB7r//ATqjsYCtxCzLsqlbvxGlNF6vBzuRpKmpkda2gziOQzAYorx8EOGSYlyV4qJkhk3VpJrFxaENXH2CcHazLvNDtsW8N6XsMU1QiqamRtpaMzLwUlZWTll5BQqwLQvDNB3Hts2C/NDjf/7j76sBG1I9s4fEgIryITOvueZqvau+Xm/c9C6F4SImnj6WCePH09TURHFxmOeff54HH3yI+l27cGy7j59raW5m68dbefutt3jooQc5++yzcBw1AHeTbuPI7or1POe6LnnBIC3NTdx73/3Ekg7hkhIcx3EDgYARyAvg8/rY17CHdze/TXt7e3YOzbqRht31DKk8iYmTp+IP5OG6NkKmD0mkGn4HjBta9y9F9AANBCLdLOah7WAL77y7ieampuy+t1aavXv2UDF4CGdPmkxxcQWOk+qmDxcXdQoh7DFjxni3bNli9aFXZs2alfJHpulHa7F+/UaKyweB6zBz5kxaW1spKipkXd2bPPDv1Wzfvh3bsrKC72E9Bd3RCGvXvs59991HS0szPp/3MAEr1QOkdY9AMllQS3Mz99x7P/GkQ0FhAbZlgdZGyu0Y7Nz2MatfW0l7e3u2gs62MwJ7du/itVdfJhaNoDU4to3rOCilskG8J5i7OI6D6zq4TvrhOn1ez3zOtm2EkDQe2M9rK1+hqbExO75SmY0nwb59e1n5l5dpbWlGCLBtG9dyTK21KCsrU4cl44QQwnFcDhxoYteObUyceBY+nx+A7u5unvjxE+zevbtPGjhp0iTmzZvH8OHDcdPHfZLJJHVvvskvf/Er/H4/rutmT6dkd03QfeqrtM+nqamRe+69j6TtUlBYiG3ZPRSDaRLp6uStjeuzVLVSiokTJ3LppZdy8sknZ+fQ1dXF5rffwuPxaCGEc6SHlNI5hve4hmG4jm2x8c112LaTPdI0btw4LrnkEkaMGJEdP5FIsHH9m6C1ltJw0u0QekCCcc2aNRmqNBLtjnDFFZdy2y03ct6smUSjUfLz83nn3XfYuHEDynWzN//II4+watUqfvGLX1BXV8e1117bM4F4nFdXrWL/gf1ZK9BKD0grKKXIz8+nqbmZe+67H8tV5BcU4th2qplXSjRgmgY7tn2cXokCwzB47LHHeO2113j66aepq6tj4cKF2Tk0NOyh8cB+YZoeU2tMnXK5qYdO/a/BRGAKIUwhhAmi5z293mfbtiGlNOp3bCcajWaFf//997N27Vp+9avU+Lfddlt2/I6Odhp215te0zBRynfUSvjjjz7e0tXZQVXVcGzLwrJtpNBIKfnggw9pb2/HkAaucrniiiv41re+xYEDB1BKEQgEWLJkCWvXrmXHjh0A7Nu7l+3btjN+7Pi0Fah0vq971QJgmib1u+qprl6M7WqCoRDd3dFU8M6wnIaBazs0NzVmlbZw4UJuueWW7BxCoRCPPvoo69ato6GhQQMi2tXRWjlkyKpoZ0QLmapsRdpfK61ASKRMJwpph5BaJwpUqkXF0UqXlZUO9hhmsrOj/TwhhNd1Xc4991zuueceOjo6cFwHn8/Hww8/TN26OjZt3qSFEKL1YEvn6NEjX83Ly3s17e5VbW3twAooLCw2ah76rvJ5/RqttJHaHBcg2LV7t/L5fETtiASYMWMGiUQi20Iej8cJh8OcddZZWQUkknG1ek2t+PjjbZheL1qlOJpM1pHqs0xVwXv37aWrs4tgKERnezuk40vmPaVlZSjDIJm0sonsjBkziMfj6PQ5glgsRmFhARMmjKehoUEJIQzbst9Y/utfLXQc91PVDl6vl2Qy6Rl96ql7tNYVgJ42fZpQSmG7Dh6Ph0QySSgYYvKUyWzavEkJIYxINPLeM8ueudJNn+Csqak5tBArLy/XAKWl5Zvrd22XrhISBCQdHNdVhiFwXSVFdr9WU19fj9frxXGcPplQQ0NDNqFzHVd6vD4cLYl1x5HSSG/b9ZTuqZOEUF4xhIohJ/W5Xt8OCNDKRUqRzVf27NmTijGOg0QgpMBVmn379mU+p/MLC4K27ZhCCMH8+YoVKz5JH5Sora1VgF9rHc9Mq6GhQXi8HpTr4gqJVhrDMNizZ0923n6f3+M4jiEWL9b0E35WAemcVPz0p0vfnjdv/n2RaPR2V6mAEMITDOb5AYrDRR+OHDHS2Lx502lCCL18+XJ55ZVXMnnyZOLxOMFgkJ/97Ge89dZbSCmVEEKOHDlyhWEYZ3RHuyuF0EpmCZd06pdRp9YkY7E0Wd6LI8qkhzpVPHm9HorC4WAkEtFSSrFs2TIWLFjA6RMmEE8kCOWHePxHj/P+++8jhNCGYQqPx/OylNIBTNK59/Ei7TIMj8cTGX/66e8AVVJK9cLzL8jV/7Wa2bNn093dTTAU4vfPPcdrr72GEEJr0CUlJe8ZhuGilDnACaWBCezHn3685LmnnguEQiHv+RdeODKRSJhXXHbZGz/4wQ/+27Jly34Xi8VswFNSUsL111/P8OHD2bBhA8uWLUMppbXWbll5ufPrZ589vaO5ufmFVasKS0XQdbyOiKfXT4A4BNK/ZZ4rDhAA4pkneiGZ7JAjRox31q1bd/XLL7+8xHEcW2vtqaio4Prrr6eyspL169ezbNmydIhQevDgIdbSpY+Pnjdv3t70QWn9aU973nTTrZcsX77sT5FIxAY8BQUF3HDDDYwaNYr33nuPX/7ylyQSCQ24JSUl5vXX33zOI498ty7z+WMa6Ai7TuZZZ038g5RSA1b6wHWGYFJCCAewQ6GQPu+8874Dn81J+/Hjx7+eFuYhc0ifx3ULCgr1nDlzbk15nvnGiRm9WmqtjZkzZz7r9Xoz4zsDjG95vV49e/ZFj6erf+O4vqwjvVpEdXU148aNEyuAsX/9q66pqdFa64KJEyf+5m9/+9sXBlqpRUVFTJ0+/YevvPTSvwohdHV1NSfoEIhesGCBXLFihXrzzffLb7jhv6/YsWP75xO9ujH6zGHq9Jo1a/5rcTKZlAOZ/ic9hgVCaK1DEydOXLp9+/arurq6Bhg/zPjxE55cu7b2xvSx1BP2BR0CwOfzMXfu3OvGTxi/YejQodFBFRXWsGHDOqZNm7Zq0aJFc4SQn/k3vGitjYsvvviWUaNG1VVWVnYPGlSRHDasqnXK1Kkvf/OOO/7lszqGq9Olu8/n48Ybb7xu7LixtVVVVfGKwYOdysrK9vHjx6+66aZbF/j9/s/mG2l0L+4gEAjw0ksvVT722GMj6uvrK3oNavAZf+FH5ne/38/zzz9/8mOPPTZi+/YD5T6f7zOfQ3p8AeD1eamrqxv5ox/99LQ333x/UK/xxWf9dUAD3aA4cf72mCzhHzqH9DjiHyiD1DZmdXW17L0q/974R8/hn0EGOeSQQw455JBDDjnkkEMOOeSQQw455JBDDjnkkEMOOeSQQw455JBDDjnk0Av/F3j61DqTYOC5AAAAAElFTkSuQmCC';
@@ -140,7 +146,7 @@
     units: { label: 'Power units', source: 'Highway equipment_portfolio.total_observed_power_units' },
     safety: { label: 'Safety (BASIC)', source: 'Highway sms_basics.unsafe_driving_measure (Unsafe Driving)' },
     alerts: { label: 'Identity alerts (ID OK / DB)', source: 'Highway identity_alerts — open alerts and type' },
-    cargo: { label: 'Cargo Insurance', source: 'Highway active motor truck cargo policy limit' },
+    cargo: { label: 'Cargo INS', source: 'Highway active motor truck cargo policy limit' },
     bipd: { label: 'Auto INS', source: 'Highway active automobile liability limit' },
     gl: { label: 'Gen Liab Ins', source: 'Highway active commercial general liability aggregate limit' },
     connection: { label: 'Connected / No Connect', source: 'Yellow Connected only if Highway status is onboarded/connected. Any other status (Connect, connecting, none) is a red No Connect pill.' },
@@ -171,6 +177,9 @@
       '.hwy-mc-hit:hover,.hwy-c411-hit:hover{opacity:.85;}' +
       '.hwy-mc-logo{display:block;width:16px;height:16px;object-fit:contain;flex-shrink:0;border-radius:3px;}' +
       '.hwy-mc-pill{display:inline-flex;align-items:center;gap:3px;border-radius:999px;padding:1px 6px;font-weight:700;border:1px solid transparent;white-space:nowrap;}' +
+      '.hwy-mc-pill.ss-fail-mail{position:relative;padding-right:16px;overflow:visible;cursor:pointer;}' +
+      '.hwy-mc-pill.ss-fail-mail .ss-fail-mail-ico{position:absolute;top:-7px;right:-7px;width:16px;height:16px;display:block;pointer-events:auto;overflow:visible;cursor:pointer;}' +
+      '.ss-intel-msg .hwy-mc-hit,.ss-intel-msg .hwy-c411-hit,.ss-intel-msg .ss-intel-pills{overflow:visible;}' +
       '.hwy-mc-pill .hwy-check,.hwy-mc-pill .hwy-x{width:13px;height:13px;display:block;flex:none;}' +
       '.hwy-mc-fail{background:#F8D0D6;color:#9B1B30;border-color:#F0A8B4;}' +
       '.hwy-mc-partial{background:#D1E7DD;color:#0F5132;border-color:#A3CFBB;}' +
@@ -222,6 +231,7 @@
       '.ss-intel-msg .ss-intel-rate{color:#1a73e8;font-weight:800;margin-left:6px;white-space:nowrap;}' +
       '.ss-rate-wrap{color:#1a73e8;font-weight:700;text-decoration:underline;cursor:pointer;' +
       '-webkit-user-select:text;user-select:text;}' +
+      '#ss-hwy-c411-panel .ss-set-ver{font:700 11px/18px inherit;color:#92400e;flex:none;white-space:nowrap;margin-left:8px;}' +
       '.ss-notes-pill{margin-left:8px;padding:1px 8px;border-radius:999px;border:1px solid #dadce0;background:#eef3fb;' +
       'color:#1a73e8;font:600 11px/18px inherit;cursor:pointer;flex:none;}' +
       '.ss-notes-pill:hover{background:#d3e3fd;}' +
@@ -549,19 +559,24 @@
     if (l.indexOf('fail') >= 0) return 'Fail';
     return label || '—';
   }
+  function isHwyFailLabel(label) {
+    var a = String(label || '').toLowerCase();
+    return a.indexOf('fail') >= 0 && a.indexOf('lookup') < 0;
+  }
   function numOr(v, fb) {
     var n = Number(v);
     if (v === '' || v == null || isNaN(n)) return fb;
     return n;
   }
   function defaultThresh() {
-    return { unitsMin: 10, safetyGreen: 0, safetyYellow: 3, safetyRed: 3 };
+    return { unitsMin: 10, cargoMinK: 100, safetyGreen: 0, safetyYellow: 3, safetyRed: 3 };
   }
   function mergeThresh(got) {
     var d = defaultThresh();
     if (!got || typeof got !== 'object') return d;
     return {
       unitsMin: numOr(got.unitsMin, d.unitsMin),
+      cargoMinK: numOr(got.cargoMinK, d.cargoMinK),
       safetyGreen: numOr(got.safetyGreen, d.safetyGreen),
       safetyYellow: numOr(got.safetyYellow, d.safetyYellow),
       safetyRed: numOr(got.safetyRed, d.safetyRed)
@@ -695,15 +710,31 @@
     }
     return '$' + Math.round(v);
   }
+  function cargoInsShort(n) {
+    var s = moneyShort(n);
+    if (!s) return null;
+    return s.replace(/^\$/, '').replace(/k$/i, 'K').replace(/m$/i, 'M');
+  }
   function cargoPill(amount) {
     if (amount == null || amount === '') return null;
-    var s = moneyShort(amount);
-    if (s == null) return null;
     var n = Number(amount);
+    if (!isFinite(n) || n < 0) return null;
+    if (n === 0) {
+      return { text: 'Cargo none', cls: 'hwy-mc-fail', title: 'No cargo insurance on file' };
+    }
+    var s = cargoInsShort(n);
+    if (s == null) return null;
+    var minK = loadThresh().cargoMinK;
+    var minAmt = Number(minK) * 1000;
+    if (!isFinite(minAmt) || minAmt < 0) minAmt = 100000;
+    var ok = n >= minAmt;
+    var floor = cargoInsShort(minAmt) || minK + 'K';
     return {
-      text: 'Cargo ' + s,
-      cls: n > 0 ? 'hwy-mc-pass' : 'hwy-mc-fail',
-      title: 'Cargo insurance ' + (n > 0 ? '$' + Number(n).toLocaleString() : 'none on file')
+      text: 'Cargo INS ' + s,
+      cls: ok ? 'hwy-mc-pass' : 'hwy-mc-fail',
+      title: ok
+        ? 'Cargo insurance ' + s
+        : 'Cargo INS ' + s + ' is below ' + floor
     };
   }
   function bipdPill(amount) {
@@ -942,16 +973,23 @@
     var kind = matched;
     if (matched === true) kind = 'exact';
     if (matched === false) kind = 'nomatch';
-    var line1;
-    if (!from || kind === 'none') line1 = 'No carrier email in this message';
-    else if (kind === 'team') line1 = from + ' is a team email';
-    else if (kind === 'exact') line1 = from + ' matches Highway email';
-    else if (kind === 'domain') line1 = from + ' domain matches Highway';
-    else if (kind === 'unmatched') line1 = from + ' is not the Highway address';
-    else if (kind === 'bad') line1 = from + ' is not on Highway';
-    else line1 = from + ' does not match Highway email';
-    if (!list.length) return line1;
-    return line1 + '\n' + list.join(', ');
+    var lines = [];
+    if (!from || kind === 'none') {
+      lines.push('No carrier email in this message');
+    } else {
+      lines.push(from);
+      if (kind === 'team') lines.push('Team email');
+      else if (kind === 'exact') lines.push('Exact match on Highway');
+      else if (kind === 'domain') lines.push('Domain matches Highway');
+      else if (kind === 'unmatched') lines.push('Not the Highway address');
+      else if (kind === 'bad') lines.push('Not on Highway');
+      else lines.push('Does not match Highway email');
+    }
+    var i;
+    for (i = 0; i < list.length; i++) {
+      if (list[i] && lines.indexOf(list[i]) < 0) lines.push(list[i]);
+    }
+    return lines.join('\n');
   }
   function isBoardOrSystemAddr(addr) {
     var e = normEmail(addr);
@@ -1343,6 +1381,22 @@
     return list.some(function (x) {
       return x.on && ids.indexOf(x.id) >= 0;
     });
+  }
+  function extrasOnSig() {
+    var s = loadSettings();
+    function pack(list) {
+      var i;
+      var out = '';
+      for (i = 0; i < (list || []).length; i++) {
+        out += (list[i].id || '') + (list[i].on ? '1' : '0');
+      }
+      return out;
+    }
+    return pack(s.hwy) + '|' + pack(s.c411);
+  }
+  function threshSig() {
+    var t = loadThresh();
+    return [t.unitsMin, t.cargoMinK, t.safetyGreen, t.safetyYellow, t.safetyRed].join(',');
   }
 
   var hwyCacheMem = null;
@@ -2222,9 +2276,9 @@
   }
   function insuranceUrl(id) {
     return (
-      'https://highway.com/monitor/api/v1/insurance_policies?q%5Bcarrier_id_eq%5D=' +
-      encodeURIComponent(id) +
-      '&q%5Bstatus_eq%5D=active'
+      'https://highway.com/monitor/api/v1/insurance_policies/active_by_carrier_id' +
+      '?with_cancelled=true&with_active_pending=true&carrier_id=' +
+      encodeURIComponent(id)
     );
   }
   function policyMoney(p, prefer) {
@@ -2247,14 +2301,18 @@
       ? data
       : data && Array.isArray(data.insurance_policies)
         ? data.insurance_policies
-        : [];
+        : data && Array.isArray(data.data)
+          ? data.data
+          : [];
     var i;
     var p;
     var t;
     var n;
     for (i = 0; i < list.length; i++) {
       p = list[i];
-      if (!p || String(p.status || '').toLowerCase() !== 'active') continue;
+      if (!p) continue;
+      var st = String(p.status || '').toLowerCase();
+      if (st && (st.indexOf('cancel') >= 0 || st.indexOf('inactive') >= 0 || st.indexOf('expire') >= 0)) continue;
       t = String(p.is_type || p.type || '');
       if (t === 'motor_truck_cargo') {
         n = policyMoney(p, ['limit']);
@@ -2306,7 +2364,12 @@
       if (moreDot) result.dot = moreDot;
     }
     applyHwyConn(result, conns);
-    if (ins) applyHwyInsurance(result, ins);
+    if (ins) {
+      applyHwyInsurance(result, ins);
+      if (extrasOn('hwy', ['cargo']) && result.cargoAmt == null) result.cargoAmt = 0;
+      if (extrasOn('hwy', ['bipd']) && result.bipdAmt == null) result.bipdAmt = 0;
+      if (extrasOn('hwy', ['gl']) && result.glAmt == null) result.glAmt = 0;
+    }
     var sdet = pickSafetyDetail(safety) || pickSafetyDetail(detail);
     if (sdet) {
       result.safety = sdet.value;
@@ -2792,6 +2855,9 @@
   function hideEquipHi() {
     eqHiState = null;
     unwrapEquipHi(document);
+    document.querySelectorAll('.ss-rate-wrap.ss-eq-hi').forEach(function (n) {
+      n.classList.remove('ss-eq-hi', 'ss-eq-hi-pass', 'ss-eq-hi-fail');
+    });
   }
   function paintEquipHi() {
     if (!eqHiState || !eqHiState.msg || !eqHiState.msg.isConnected) {
@@ -2845,6 +2911,26 @@
     });
     pill.addEventListener('mouseleave', hideEquipHi);
     return pill;
+  }
+  function bindRateHi(el, msg, amount) {
+    if (!el || !msg || amount == null) return el;
+    if (el._ssRateHiBound) return el;
+    el._ssRateHiBound = true;
+    el.addEventListener('mouseenter', function () {
+      var wraps = msg.querySelectorAll('.ss-rate-wrap[data-ss-rate="' + String(amount) + '"]');
+      if (wraps.length) {
+        hideEquipHi();
+        var i;
+        for (i = 0; i < wraps.length; i++) {
+          wraps[i].classList.add('ss-eq-hi', 'ss-eq-hi-pass');
+        }
+        eqHiState = { msg: msg, vals: [], fail: false };
+        return;
+      }
+      showEquipHi(msg, [String(amount)], false);
+    });
+    el.addEventListener('mouseleave', hideEquipHi);
+    return el;
   }
   function paintEquipPill(parent, spec, msg) {
     if (!spec || !spec.text) return;
@@ -3067,7 +3153,17 @@
       var id = order[i].id;
       if (id === 'assessment') {
         var label = state.hwy.assessment || 'No assessment';
-        addPill(hwyHit, pillClass(label), compactAssessment(label), label);
+        var aPill = addPill(hwyHit, pillClass(label), compactAssessment(label), label);
+        if (isHwyFailLabel(label) && aPill) {
+          aPill.className += ' ss-fail-mail';
+          aPill.appendChild(mailIcoEl());
+          bindHoverTip(aPill, 'Reply: you do not pass Highway');
+          aPill.addEventListener('click', function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            openHwyFailDraft(messageRoot(aPill) || msg);
+          });
+        }
       } else if (id === 'units') {
         addPill(
           hwyHit,
@@ -3203,7 +3299,7 @@
   }
   function inQuoted(node) {
     var el = node && node.nodeType === 3 ? node.parentElement : node;
-    return !!(el && el.closest && el.closest('.gmail_quote, .gmail_extra, .gmail_attr, blockquote'));
+    return !!(el && el.closest && el.closest('.gmail_quote, .gmail_extra, .gmail_attr, blockquote.gmail_quote'));
   }
   function isShown(el) {
     if (!el || !el.getBoundingClientRect) return false;
@@ -3258,6 +3354,9 @@
     if (!st.hwy) {
       var hit = getCached(mc);
       if (hit) st.hwy = hit;
+    }
+    if (st.hwy && st.hwy.id && !st.hwy.login && cacheNeedsHwyExtras(st.hwy)) {
+      loadHwyExtras(mc, st.hwy.id, st.hwy);
     }
     if (!st.fg) {
       var fgHit = getC411Cached(mc);
@@ -3620,14 +3719,15 @@
   }
   function isExpandedMsg(msg) {
     if (!msg || !msg.querySelector) return false;
-    if (msg.classList && msg.classList.contains('kv')) return false;
     var body = msg.querySelector('div.a3s, div.ii.gt');
-    return !!(body && isShown(body));
+    if (body && isShown(body)) return true;
+    if (msg.classList && (msg.classList.contains('kv') || msg.classList.contains('kQ'))) return false;
+    return false;
   }
   function expandedMessages(root) {
     if (!root || !root.querySelectorAll) return [];
     var out = [];
-    var list = root.querySelectorAll('.h7');
+    var list = root.querySelectorAll('.h7, div.kv');
     var i;
     for (i = 0; i < list.length; i++) {
       if (isExpandedMsg(list[i])) out.push(list[i]);
@@ -3804,9 +3904,20 @@
     if (recips.length !== 1) return [];
     return assignedMcsForAddr(recips[0], tid);
   }
+  function mcsFromMessageText(msg) {
+    var hits = findMcMatches(unquotedMessageText(messageBodyBox(msg)));
+    var out = [];
+    var i;
+    for (i = 0; i < hits.length; i++) {
+      if (!hits[i].mc || out.indexOf(hits[i].mc) >= 0) continue;
+      out.push(hits[i].mc);
+    }
+    return out;
+  }
   function barMcsForMessage(msg) {
     var from = messageFromAddr(msg);
     var own = mcsInMessage(msg, true);
+    if (!own.length) own = mcsFromMessageText(msg);
     var tid = gmailThreadId(openThreadRoot() || msg);
     if (isSelfOrCoworkerAddr(from)) return uniqMcs(own.concat(mcsForSingleKnownRecipient(msg, tid)));
     return uniqMcs(own.concat(assignedMcsForAddr(from, tid)));
@@ -3823,7 +3934,7 @@
       if (!map[e]) map[e] = [];
       if (map[e].indexOf(mc) < 0) map[e].push(mc);
     }
-    var msgs = root.querySelectorAll('.h7, .adn.ads');
+    var msgs = root.querySelectorAll('.h7, .adn.ads, div.kv');
     var i;
     for (i = 0; i < msgs.length; i++) {
       var msg = msgs[i];
@@ -3865,6 +3976,120 @@
     }
     return n;
   }
+  function mailIcoEl() {
+    var svg = svgEl('svg', {
+      viewBox: '0 0 24 24',
+      width: '16',
+      height: '16',
+      class: 'ss-fail-mail-ico'
+    });
+    var g = svgEl('g', { transform: 'translate(1.4,3) scale(0.0414)' });
+    g.appendChild(
+      svgEl('path', {
+        fill: '#fff',
+        stroke: '#9B1B30',
+        'stroke-width': '22',
+        'stroke-linejoin': 'round',
+        d:
+          'M48 64C21.5 64 0 85.5 0 112c0 15.1 7.1 29.3 19.2 38.4L236.8 313.6c11.4 8.5 27 8.5 38.4 0L492.8 150.4c12.1-9.1 19.2-23.3 19.2-38.4c0-26.5-21.5-48-48-48H48zM0 176V384c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V176L294.4 339.2c-22.8 17.1-54 17.1-76.8 0L0 176z'
+      })
+    );
+    svg.appendChild(g);
+    return svg;
+  }
+  function tapEl(el) {
+    if (!el) return false;
+    try {
+      el.focus();
+    } catch (e) {}
+    try {
+      el.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, view: window, button: 0 }));
+      el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window, button: 0 }));
+      el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window, button: 0 }));
+      el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window, button: 0 }));
+    } catch (e2) {}
+    try {
+      el.click();
+    } catch (e3) {}
+    return true;
+  }
+  function findReplyForMessage(msg) {
+    if (!msg || !msg.querySelectorAll) return null;
+    var host =
+      (msg.closest && (msg.closest('.h7') || msg.closest('div.kv') || msg.closest('.adn') || msg.closest('.adf'))) ||
+      msg;
+    if (!host.querySelectorAll) host = msg;
+    var allBtn = null;
+    var replyBtn = null;
+    var nodes = host.querySelectorAll('[aria-label]');
+    var i;
+    for (i = 0; i < nodes.length; i++) {
+      var lab = String(nodes[i].getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
+      if (/^reply to all$/i.test(lab)) allBtn = nodes[i];
+      else if (/^reply$/i.test(lab)) replyBtn = nodes[i];
+    }
+    return allBtn || replyBtn;
+  }
+  function fillGmailCompose(text, tries) {
+    tries = tries || 0;
+    if (tries > 20) return;
+    var box =
+      document.querySelector('div[aria-label="Message Body"]') ||
+      document.querySelector('div[aria-label="Message body"]') ||
+      document.querySelector('div.Am.Al[contenteditable="true"]') ||
+      document.querySelector('div.editable[contenteditable="true"]') ||
+      document.querySelector('div[contenteditable="true"][g_editable="true"]');
+    if (!box) {
+      setTimeout(function () {
+        fillGmailCompose(text, tries + 1);
+      }, 140);
+      return;
+    }
+    if (tries < 3) {
+      setTimeout(function () {
+        fillGmailCompose(text, tries + 1);
+      }, 140);
+      return;
+    }
+    if (box.getAttribute && box.getAttribute('data-ss-fail-filled') === '1') return;
+    function prependFail() {
+      var n = document.createElement('div');
+      n.textContent = text;
+      var sig = box.querySelector(
+        '.gmail_signature, .gmail_signature_prefix, .gmail_quote, blockquote.gmail_quote'
+      );
+      if (sig) box.insertBefore(n, sig);
+      else box.insertBefore(n, box.firstChild);
+      var gap = document.createElement('div');
+      gap.appendChild(document.createElement('br'));
+      if (n.nextSibling) box.insertBefore(gap, n.nextSibling);
+      else box.appendChild(gap);
+    }
+    try {
+      if (box.setAttribute) box.setAttribute('data-ss-fail-filled', '1');
+      box.focus();
+      var range = document.createRange();
+      range.selectNodeContents(box);
+      range.collapse(true);
+      var sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+      if (document.execCommand) document.execCommand('insertText', false, text + '\n\n');
+      else prependFail();
+    } catch (e) {
+      try {
+        prependFail();
+      } catch (e2) {}
+    }
+  }
+  function openHwyFailDraft(msg) {
+    msg = messageRoot(msg) || msg;
+    var btn = findReplyForMessage(msg);
+    tapEl(btn);
+    fillGmailCompose(HWY_FAIL_REPLY, 0);
+  }
   function copyIconBtn(hoverLabel) {
     var tip = hoverLabel || 'Copy';
     var b = el('button', 'ss-copy-btn');
@@ -3903,7 +4128,7 @@
     clipText(carrierClipboardText(name, mc, dot));
     flashCopyBtn(btn, 'Copy Carrier + MC/DOT');
   }
-  function buildMsgCard(msg, mc) {
+  function buildMsgCard(msg, mc, rateAmt) {
     var st = ensureMc(mc);
     var wrapForMc = msg.querySelector('.hwy-mc-wrap[data-hwy-mc="' + mc + '"]');
     var fromAddr = threadCarrierAddr(wrapForMc || msg);
@@ -3926,22 +4151,28 @@
     });
     head.appendChild(copyBtn);
     head.appendChild(el('span', 'ss-intel-mc', 'MC ' + mc));
-    var rateAmt = latestCarrierRate();
-    if (rateAmt != null) {
-      var rateEl = el('span', 'ss-intel-rate', formatUsdAmount(rateAmt));
-      rateEl.setAttribute('data-ss-rate', String(rateAmt));
-      rateEl.title = 'Latest carrier rate in this thread';
-      head.appendChild(rateEl);
-    }
-    var mcCopy = copyIconBtn(rateAmt != null ? 'Copy MC + Rate' : 'Copy MC');
+    var mcCopy = copyIconBtn('Copy MC');
     mcCopy.addEventListener('click', function (ev) {
       ev.preventDefault();
       ev.stopPropagation();
-      var r = latestCarrierRate();
-      clipText(r != null ? copyMcRateText(mc, r) : copyMcText(mc));
-      flashCopyBtn(mcCopy, r != null ? 'Copy MC + Rate' : 'Copy MC');
+      clipText(copyMcText(mc));
+      flashCopyBtn(mcCopy, 'Copy MC');
     });
     head.appendChild(mcCopy);
+    if (rateAmt != null) {
+      var rateEl = el('span', 'ss-intel-rate', formatUsdAmount(rateAmt));
+      rateEl.setAttribute('data-ss-rate', String(rateAmt));
+      bindRateHi(rateEl, msg, rateAmt);
+      head.appendChild(rateEl);
+      var rateCopy = copyIconBtn('Copy MC and Rate');
+      rateCopy.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        clipText(copyMcRateText(mc, rateAmt));
+        flashCopyBtn(rateCopy, 'Copy MC and Rate');
+      });
+      head.appendChild(rateCopy);
+    }
     if (st.hwy && (st.hwy.dnu || isDnuStatus(st.hwy.connStatus)) && st.hwy.dnuNote) {
       head.appendChild(el('span', 'ss-intel-note', 'DNU: ' + st.hwy.dnuNote));
     }
@@ -3949,6 +4180,7 @@
     var pills = el('span', 'ss-intel-pills');
     var hwyHit = el('span', 'hwy-mc-hit');
     hwyHit.addEventListener('click', function (ev) {
+      if (ev.target && ev.target.closest && ev.target.closest('.ss-fail-mail')) return;
       ev.preventDefault();
       ev.stopPropagation();
       openHighway(mc);
@@ -3979,13 +4211,18 @@
     }
     return out;
   }
-  function cardStateSig(mc, msg) {
+  function cardStateSig(mc, msg, rateAmt) {
     var st = mcStore[mc] || {};
     var hwy = st.hwy || {};
     var fg = st.fg || {};
-    var found = findEquipMentions(messageBodyText(msg));
+    var found = { truckPlates: [], trailerPlates: [], truckVins: [] };
+    if (extrasOn('hwy', ['truckPlate', 'trailerPlate', 'truckVin'])) {
+      found = findEquipMentions(messageBodyText(msg));
+    }
     return [
       mc,
+      extrasOnSig(),
+      threshSig(),
       hwy.assessment || '',
       hwy.fleet == null ? '' : hwy.fleet,
       hwy.safety == null ? '' : hwy.safety,
@@ -3994,6 +4231,9 @@
       hwy.login ? '1' : '0',
       Array.isArray(hwy.vehicles) ? String(hwy.vehicles.length) : '',
       hwy.alerts == null ? '' : hwy.alerts,
+      hwy.cargoAmt == null ? '' : hwy.cargoAmt,
+      hwy.bipdAmt == null ? '' : hwy.bipdAmt,
+      hwy.glAmt == null ? '' : hwy.glAmt,
       (hwy.emails || []).length,
       fg.hasFg ? '1' : '0',
       fg.date || '',
@@ -4003,17 +4243,14 @@
       (found.trailerPlates || []).join(','),
       (found.truckVins || []).join(','),
       messageFromAddr(msg) || '',
-      (function () {
-        var r = latestCarrierRate();
-        return r == null ? '' : String(r);
-      })()
+      rateAmt == null ? '' : String(rateAmt)
     ].join('\t');
   }
-  function fillMsgBar(bar, msg, mcs) {
+  function fillMsgBar(bar, msg, mcs, rateAmt) {
     mcs = uniqMcs(mcs);
     var sig = mcs
       .map(function (mc) {
-        return cardStateSig(mc, msg);
+        return cardStateSig(mc, msg, rateAmt);
       })
       .join('\n');
     if (bar.getAttribute('data-ss-sig') === sig && bar.firstChild) return;
@@ -4021,7 +4258,7 @@
     if (eqHiState && eqHiState.msg === msg) hideEquipHi();
     while (bar.firstChild) bar.removeChild(bar.firstChild);
     mcs.forEach(function (mc) {
-      bar.appendChild(buildMsgCard(msg, mc));
+      bar.appendChild(buildMsgCard(msg, mc, rateAmt));
     });
     bar.setAttribute('data-ss-sig', sig);
   }
@@ -4049,6 +4286,7 @@
     var keep = [];
     var i;
     learnMcsFromThread(root);
+    var rateMap = senderRateMap(root);
     var subjMcs = mcsInMessage(root.querySelector('h2.hP'), true);
     for (i = 0; i < msgs.length; i++) {
       var msg = msgs[i];
@@ -4070,7 +4308,7 @@
       } else if (bar.parentNode !== host) {
         host.appendChild(bar);
       }
-      fillMsgBar(bar, msg, mcs);
+      fillMsgBar(bar, msg, mcs, rateForBarMessage(msg, rateMap));
       keep.push(bar);
     }
     root.querySelectorAll('.ss-intel-msg').forEach(function (n) {
@@ -4255,22 +4493,22 @@
   }
   function messageMcForRates(root) {
     var msg = messageRoot(root) || root;
-    var mcs = mcsInMessage(msg);
+    var mcs = mcsInMessage(msg, true);
     var i;
     for (i = 0; i < mcs.length; i++) {
       if (!shouldIgnore(mcs[i])) return mcs[i];
     }
-    var thread = openThreadRoot();
-    if (thread && thread !== msg) {
-      mcs = mcsInMessage(thread);
-      for (i = 0; i < mcs.length; i++) {
-        if (!shouldIgnore(mcs[i])) return mcs[i];
-      }
+    mcs = mcsFromMessageText(msg);
+    for (i = 0; i < mcs.length; i++) {
+      if (!shouldIgnore(mcs[i])) return mcs[i];
     }
-    var subj = (thread && thread.querySelector && thread.querySelector('h2.hP')) || document.querySelector('h2.hP');
-    if (subj) {
-      var hits = findMcMatches(subj.textContent || '');
-      if (hits.length && !shouldIgnore(hits[0].mc)) return hits[0].mc;
+    var from = messageFromAddr(msg);
+    var tid = gmailThreadId(openThreadRoot() || msg);
+    var assigned = isSelfOrCoworkerAddr(from)
+      ? mcsForSingleKnownRecipient(msg, tid)
+      : assignedMcsForAddr(from, tid);
+    for (i = 0; i < assigned.length; i++) {
+      if (!shouldIgnore(assigned[i])) return assigned[i];
     }
     return '';
   }
@@ -4385,43 +4623,49 @@
     for (i = 0; i < n; i++) {
       var node = nodes[i];
       if (inInboxList(node)) continue;
+      if (!isShown(node) && !(node.classList && node.classList.contains('hP'))) continue;
       if (node.classList && node.classList.contains('g6')) {
-        if (!isShown(node)) continue;
         var host = node.closest && node.closest('.h7');
         if (host && isExpandedMsg(host)) continue;
       }
       wrapRatesInScope(node);
     }
   }
-  function messageRateAmounts(msg) {
-    if (!msg) return [];
+  function latestRateInMessage(msg) {
     var hits = findRateMatches(unquotedMessageText(messageBodyBox(msg)));
-    var out = [];
-    var i;
-    for (i = 0; i < hits.length; i++) {
-      if (out.indexOf(hits[i].n) < 0) out.push(hits[i].n);
-    }
-    return out;
+    if (!hits.length) return null;
+    return hits[hits.length - 1].n;
   }
-  function latestCarrierRate(root) {
+  function senderRateMap(root) {
+    var map = {};
     root = root || openThreadRoot();
-    if (!root || !root.querySelectorAll) return null;
+    if (!root || !root.querySelectorAll) return map;
     var msgs = threadMessageNodes(root);
     if (!msgs.length) msgs = expandedMessages(root);
     var i;
-    for (i = msgs.length - 1; i >= 0; i--) {
+    for (i = 0; i < msgs.length; i++) {
       var msg = msgs[i];
-      if (isSkipCarrierAddr(messageFromAddr(msg))) continue;
-      var rates = messageRateAmounts(msg);
-      if (!rates.length) continue;
-      var min = rates[0];
-      var r;
-      for (r = 1; r < rates.length; r++) {
-        if (rates[r] < min) min = rates[r];
-      }
-      return min;
+      var from = normEmail(messageFromAddr(msg));
+      if (!from || isSkipCarrierAddr(from)) continue;
+      var amt = latestRateInMessage(msg);
+      if (amt == null) continue;
+      map[from] = amt;
     }
-    return null;
+    return map;
+  }
+  function rateForBarMessage(msg, rateMap) {
+    var from = normEmail(messageFromAddr(msg));
+    if (!from) return latestRateInMessage(msg);
+    if (isSelfOrCoworkerAddr(from)) {
+      var recips = nonTeamRecipients(msg);
+      if (recips.length === 1) {
+        var k = normEmail(recips[0]);
+        if (k && rateMap && rateMap[k] != null) return rateMap[k];
+      }
+      return latestRateInMessage(msg);
+    }
+    if (rateMap && rateMap[from] != null) return rateMap[from];
+    return latestRateInMessage(msg);
   }
   function unquotedMessageText(a3s) {
     if (!a3s) return '';
@@ -4494,7 +4738,10 @@
     add(root.querySelector('h2.hP'));
     var bodies = root.querySelectorAll('div.a3s, div.ii.gt');
     var i;
-    for (i = 0; i < bodies.length; i++) add(bodies[i]);
+    for (i = 0; i < bodies.length; i++) {
+      if (!isShown(bodies[i])) continue;
+      add(bodies[i]);
+    }
     var msgs = expandedMessages(root);
     for (i = 0; i < msgs.length; i++) add(msgs[i]);
     var snips = root.querySelectorAll('.iA.g6');
@@ -4606,6 +4853,20 @@
     }, 280);
   }
   var scanning = false;
+  var scanRescan = 0;
+  function expandedNeedsRescan() {
+    var root = openThreadRoot();
+    if (!root) return false;
+    var msgs = expandedMessages(root);
+    var i;
+    for (i = 0; i < msgs.length; i++) {
+      var msg = msgs[i];
+      if (msg.querySelector && msg.querySelector('.hwy-mc-wrap, .ss-intel-msg')) continue;
+      var t = unquotedMessageText(messageBodyBox(msg));
+      if (MC_TEST.test(t) || MC_AFTER_TEST.test(t)) return true;
+    }
+    return false;
+  }
   function scanNow() {
     if (scanning) return;
     scanning = true;
@@ -4634,6 +4895,12 @@
       scanning = false;
       armObserver();
       if (eqHiState) paintEquipHi();
+      if (!isPaused() && scanRescan < 2 && expandedNeedsRescan()) {
+        scanRescan++;
+        schedule();
+      } else {
+        scanRescan = 0;
+      }
     }
   }
 
@@ -4687,22 +4954,29 @@
     if (openRetry) return;
     openRetry = setTimeout(function () {
       openRetry = 0;
-      var root = openThreadRoot();
-      if (!root) return;
-      if (!root.querySelector('.hwy-mc-wrap')) {
-        scanNow();
-        return;
-      }
-      if (uiMode() !== 'inline' && !root.querySelector('.ss-intel-msg')) applyUiMode();
+      if (!openThreadRoot()) return;
+      scanNow();
     }, 400);
   }
   var expandRetry1 = 0;
   function kickExpandScan() {
-    if (expandRetry1) clearTimeout(expandRetry1);
+    if (isPaused()) return;
+    schedule();
+    if (expandRetry1) return;
     expandRetry1 = setTimeout(function () {
       expandRetry1 = 0;
-      kickScan();
-    }, 400);
+      if (!isPaused()) scanNow();
+    }, 500);
+  }
+  function clickLooksLikeCollapsedMsg(ev) {
+    var n = ev && ev.target;
+    if (!n) return false;
+    var el = n.nodeType === 1 ? n : n.parentElement;
+    if (!el || !el.closest) return false;
+    if (el.closest('tr.zA, .ss-intel-msg, .hwy-mc-wrap, .ss-rate-wrap, #ss-hwy-c411-panel, #ss-hwy-c411-set-wrap, a[href]')) {
+      return false;
+    }
+    return !!(el.closest('div.kv') || el.closest('.kQ'));
   }
   function clickLooksLikeExpandAll(ev) {
     var n = ev && ev.target;
@@ -4780,7 +5054,7 @@
     if (!panelEl) return;
     var q = String(query || '').toLowerCase();
     var s = loadSettings();
-    if (!s.thresh) s.thresh = defaultThresh();
+    s.thresh = mergeThresh(s.thresh);
     function makeNum(value, key, fallback, step) {
       var inp = document.createElement('input');
       inp.type = 'number';
@@ -4807,6 +5081,15 @@
           s.thresh[key] = fallback;
           saveSettings(s);
         }
+      });
+      inp.addEventListener('blur', function () {
+        if (inp.value === '' || isNaN(Number(inp.value))) {
+          inp.value = String(fallback);
+          s.thresh[key] = fallback;
+        } else {
+          s.thresh[key] = Number(inp.value);
+        }
+        saveSettings(s);
       });
       return inp;
     }
@@ -4859,7 +5142,7 @@
         row.appendChild(grip);
         row.appendChild(box);
         row.appendChild(name);
-        if (which === 'hwy' && (item.id === 'units' || item.id === 'safety')) {
+        if (which === 'hwy' && (item.id === 'units' || item.id === 'cargo' || item.id === 'safety')) {
           row.className += ' ss-has-extra';
           var extra = el('div', 'ss-set-extra');
           extra.addEventListener('click', function (ev) {
@@ -4872,6 +5155,9 @@
           if (item.id === 'units') {
             extra.appendChild(labNum('If less than', makeNum(th.unitsMin, 'unitsMin', 10, '1')));
             extra.appendChild(document.createTextNode('units, badge is red'));
+          } else if (item.id === 'cargo') {
+            extra.appendChild(labNum('If less than', makeNum(th.cargoMinK, 'cargoMinK', 100, '1')));
+            extra.appendChild(document.createTextNode('K, badge is red'));
           } else {
             extra.appendChild(labNum('Green ≤', makeNum(th.safetyGreen, 'safetyGreen', 0, 'any')));
             extra.appendChild(labNum('Yellow ≤', makeNum(th.safetyYellow, 'safetyYellow', 3, 'any')));
@@ -5004,6 +5290,7 @@
 
     var head = el('div', 'ss-set-head');
     head.appendChild(el('div', 'ss-set-title', 'Carrier check'));
+    head.appendChild(el('div', 'ss-set-ver', SCRIPT_VERSION));
     var notesPill = el('button', 'ss-notes-pill', 'Release notes');
     notesPill.type = 'button';
     notesPill.addEventListener('click', function (ev) {
@@ -5300,14 +5587,18 @@
     stopCalloutFollow(card);
     var wrap = document.getElementById('ss-hwy-c411-set-wrap');
     var host = wrap && wrap.parentElement;
-    if (typeof MutationObserver === 'function' && host) {
+    var banner = document.querySelector('[role="banner"]');
+    if (typeof MutationObserver === 'function') {
       card._ssMO = new MutationObserver(ask);
-      card._ssMO.observe(host, { childList: true, subtree: false });
+      if (banner) card._ssMO.observe(banner, { childList: true, subtree: true });
+      else if (host) card._ssMO.observe(host, { childList: true, subtree: true });
     }
     if (typeof ResizeObserver === 'function' && wrap) {
       card._ssRO = new ResizeObserver(ask);
       card._ssRO.observe(wrap);
     }
+    setTimeout(ask, 280);
+    setTimeout(ask, 700);
   }
   function showSsCallout(kind, forceNotes) {
     hideSsCallout();
@@ -5393,9 +5684,7 @@
       });
       card.appendChild(x);
       card.appendChild(el('h4', '', SCRIPT_TITLE));
-      card.appendChild(
-        el('div', 'ss-co-ver', 'Version ' + SCRIPT_VERSION + ' · Released ' + RELEASE_DATE)
-      );
+      card.appendChild(el('div', 'ss-co-ver', 'Version ' + SCRIPT_VERSION));
       card.appendChild(el('div', 'ss-co-body', RELEASE_NOTES));
     }
     (document.body || document.documentElement).appendChild(card);
@@ -5424,9 +5713,13 @@
     }
     return false;
   }
+  var notesShowTimer = 0;
   function maybeShowCallout() {
     if (isPaused()) return;
-    if (document.getElementById('ss-ss-callout')) return;
+    if (document.getElementById('ss-ss-callout')) {
+      pinOpenCallout();
+      return;
+    }
     if (!document.getElementById('ss-hwy-c411-set-btn')) return;
     if (!loadOrgMc()) {
       if (window.__ssSetupSnooze) {
@@ -5440,7 +5733,17 @@
       return;
     }
     if (notesVersionAcked()) return;
-    showSsCallout('notes');
+    if (notesShowTimer) return;
+    notesShowTimer = setTimeout(function () {
+      notesShowTimer = 0;
+      if (isPaused() || notesVersionAcked()) return;
+      if (!document.getElementById('ss-hwy-c411-set-btn')) return;
+      if (document.getElementById('ss-ss-callout')) {
+        pinOpenCallout();
+        return;
+      }
+      showSsCallout('notes');
+    }, 600);
   }
   function pinOpenCallout() {
     var co = document.getElementById('ss-ss-callout');
@@ -5634,10 +5937,14 @@
       }
       if (m.type === 'attributes') {
         if (m.attributeName === 'class' && classExpandChanged(m.oldValue, tgt && tgt.className)) {
-          schedule();
+          kickExpandScan();
           return;
         }
         if (m.attributeName === 'aria-expanded' && String(m.oldValue || '') !== String((tgt && tgt.getAttribute && tgt.getAttribute('aria-expanded')) || '')) {
+          kickExpandScan();
+          return;
+        }
+        if (m.attributeName === 'aria-hidden') {
           schedule();
           return;
         }
@@ -5647,6 +5954,14 @@
         for (j = 0; j < m.addedNodes.length; j++) {
           var n = m.addedNodes[j];
           if (isOurUiNode(n)) continue;
+          if (
+            n.nodeType === 1 &&
+            n.matches &&
+            n.matches('.h7, .adn, div.a3s, div.ii.gt, div.kv, .kQ')
+          ) {
+            kickExpandScan();
+            return;
+          }
           if (nodeMightHaveMc(n)) {
             schedule();
             return;
@@ -5682,7 +5997,7 @@
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['class', 'aria-expanded'],
+      attributeFilter: ['class', 'aria-expanded', 'aria-hidden'],
       attributeOldValue: true
     };
     if (thread) {
@@ -5778,7 +6093,7 @@
         }
         var n = ev.target;
         if (n && n.closest && n.closest('tr.zA')) kickScan();
-        if (clickLooksLikeExpandAll(ev)) kickExpandScan();
+        if (clickLooksLikeCollapsedMsg(ev) || clickLooksLikeExpandAll(ev)) kickExpandScan();
       },
       true
     );
