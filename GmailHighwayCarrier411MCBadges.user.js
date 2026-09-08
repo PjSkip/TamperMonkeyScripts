@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail Highway Carrier411 MC badges
 // @namespace    shipsierra.highway.gmail
-// @version      2026.36.7.22
+// @version      2026.36.7.23
 // @description  Highway and Carrier411 carrier info next to MC numbers in Gmail.
 // @author       Ivan Karpenko
 // @copyright    2026, ShipSierra.com (Ivan Karpenko)
@@ -39,7 +39,7 @@
   var CACHE_KEY = 'hwy_mc_cache_v10';
   var C411_CACHE_KEY = 'c411_fg_cache_v1';
   var SETTINGS_KEY = 'hwy_c411_badge_settings_v3';
-  var SCRIPT_VERSION = '2026.36.7.22';
+  var SCRIPT_VERSION = '2026.36.7.23';
   var SCRIPT_TITLE = 'ShipSierra.com Carrier Check on Hwy/C411';
   var RELEASE_DATE = 'September 8, 2026';
   var ORG_MC_KEY = 'ss_org_mc';
@@ -3937,7 +3937,7 @@
     for (i = 0; i < scopes.length; i++) processScope(scopes[i]);
     for (i = 0; i < scopes.length; i++) wrapRatesInScope(scopes[i]);
     for (i = 0; i < scopes.length; i++) {
-      var q = firstQuoteBlock(scopes[i]);
+      var q = firstQuotedBody(scopes[i]);
       if (!q || scopes.indexOf(q) >= 0) continue;
       processScope(q);
       wrapRatesInScope(q);
@@ -4089,6 +4089,20 @@
     } catch (eQ) {}
     return root.querySelector('.gmail_quote, .gmail_extra, blockquote.gmail_quote');
   }
+  function firstQuotedBody(root) {
+    var q = firstQuoteBlock(root);
+    if (!q) return null;
+    var kids = q.children || [];
+    var i;
+    for (i = 0; i < kids.length; i++) {
+      var el = kids[i];
+      var cls = String(el.className || '');
+      if (/gmail_attr/.test(cls)) continue;
+      var tag = el.tagName || '';
+      if (tag === 'BLOCKQUOTE' || /gmail_quote|gmail_extra/.test(cls)) return el;
+    }
+    return q;
+  }
   function firstQuoteAuthor(msg) {
     var box = messageBodyBox(msg);
     var q = firstQuoteBlock(box);
@@ -4118,7 +4132,7 @@
       add(w.getAttribute('data-hwy-mc'));
     });
     if (out.length) return out;
-    var q = firstQuoteBlock(messageBodyBox(msg));
+    var q = firstQuotedBody(messageBodyBox(msg));
     if (!q) return out;
     var t = '';
     function walk(node, isRoot) {
