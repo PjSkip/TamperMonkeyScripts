@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail Highway Carrier411 MC badges
 // @namespace    shipsierra.highway.gmail
-// @version      2026.36.7.19
+// @version      2026.36.7.21
 // @description  Highway and Carrier411 carrier info next to MC numbers in Gmail.
 // @author       Ivan Karpenko
 // @copyright    2026, ShipSierra.com (Ivan Karpenko)
@@ -39,7 +39,7 @@
   var CACHE_KEY = 'hwy_mc_cache_v10';
   var C411_CACHE_KEY = 'c411_fg_cache_v1';
   var SETTINGS_KEY = 'hwy_c411_badge_settings_v3';
-  var SCRIPT_VERSION = '2026.36.7.19';
+  var SCRIPT_VERSION = '2026.36.7.21';
   var SCRIPT_TITLE = 'ShipSierra.com Carrier Check on Hwy/C411';
   var RELEASE_DATE = 'September 8, 2026';
   var ORG_MC_KEY = 'ss_org_mc';
@@ -83,6 +83,7 @@
   var MC_AFTER_TEST = new RegExp('\\b[0-9]{4,8}' + MC_GAP + 'MC\\b', 'i');
   var MC_ASK = /\bmc(?:\s*(?:#|no\.?|num(?:ber)?))?\b|\bmotor\s*carrier\b/i;
   var BARE_MC_REPLY = /^\s*#?\s*([0-9]{5,8})\s*\.?\s*$/;
+  var BARE_RATE_REPLY = /^\s*\$?\s*([1-9]\d{2,4}(?:,\d{3})?)\s*\$?\s*[.!?]?\s*$/;
   var HWY_CHECK =
     "data:image/svg+xml,%3csvg%20width='13'%20height='13'%20viewBox='0%200%2013%2013'%20fill='none'%20xmlns='http://www.w3.org/2000/svg'%3e%3cpath%20fill-rule='evenodd'%20clip-rule='evenodd'%20d='M6.30466%2012.2119C9.35139%2012.2119%2011.8212%209.74201%2011.8212%206.69529C11.8212%205.8144%2011.6148%204.98173%2011.2476%204.24303L6.49714%208.99348L5.93988%209.55074L5.38262%208.99348L2.95534%206.56621L4.06986%205.45169L5.93988%207.32171L10.3341%202.92748C9.32739%201.8513%207.89458%201.17871%206.30466%201.17871C3.25794%201.17871%200.788086%203.64857%200.788086%206.69529C0.788086%209.74201%203.25794%2012.2119%206.30466%2012.2119Z'%20fill='%2354C774'/%3e%3c/svg%3e";
   var HWY_X =
@@ -3800,14 +3801,24 @@
     if (!msg || !msg.querySelector) return null;
     return msg.querySelector('.iA.g6') || msg.querySelector('.g6') || null;
   }
-  function collapsedHasMc(msg) {
-    if (!msg || isExpandedMsg(msg)) return false;
+  function collapsedSnippetText(msg) {
     var snip = collapsedSnippetBox(msg);
     var t = '';
     try {
-      t = String((snip && snip.textContent) || msg.textContent || '').slice(0, 2500);
+      t = String((snip && snip.textContent) || (msg && msg.textContent) || '').slice(0, 2500);
     } catch (eSnip) {}
+    return t;
+  }
+  function collapsedHasMc(msg) {
+    if (!msg || isExpandedMsg(msg)) return false;
+    var t = collapsedSnippetText(msg);
     return MC_TEST.test(t) || MC_AFTER_TEST.test(t);
+  }
+  function collapsedHasRate(msg) {
+    if (!msg || isExpandedMsg(msg)) return false;
+    var t = collapsedSnippetText(msg);
+    if (findRateMatches(t).length) return true;
+    return bareRateInText(t) != null;
   }
   function threadScanMessages(root) {
     var hot = hotMessages(root);
@@ -3824,8 +3835,9 @@
       if (hot.indexOf(all[i]) >= 0) continue;
       if (isExpandedMsg(all[i])) continue;
       if (
-        (all[i].querySelector && all[i].querySelector('.hwy-mc-wrap, .ss-intel-msg')) ||
-        collapsedHasMc(all[i])
+        (all[i].querySelector && all[i].querySelector('.hwy-mc-wrap, .ss-intel-msg, .ss-rate-wrap')) ||
+        collapsedHasMc(all[i]) ||
+        collapsedHasRate(all[i])
       ) {
         hot.push(all[i]);
       }
@@ -4628,6 +4640,15 @@
     if (n < 100 || n >= 50000) return null;
     return Math.round(n);
   }
+  function bareRateInText(s) {
+    var t = String(s || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!t || t.length > 80) return null;
+    var m = t.match(BARE_RATE_REPLY);
+    if (!m) return null;
+    return parseRateNum(m[1], false);
+  }
   function rateAfterIsUnit(text, end) {
     return /^\s*(?:lbs?|pounds?|kgs?|kilos?|mi(?:les?)?|kms?)\b/i.test(String(text || '').slice(end));
   }
@@ -4800,17 +4821,39 @@
       wrapRatesInScope(node);
     }
   }
+  function lastUnquotedRateWrap(msg) {
+    if (!msg || !msg.querySelectorAll) return null;
+    var wraps = msg.querySelectorAll('.ss-rate-wrap[data-ss-rate]');
+    var amt = null;
+    var i;
+    for (i = 0; i < wraps.length; i++) {
+      if (inQuoted(wraps[i])) continue;
+      var n = Number(wraps[i].getAttribute('data-ss-rate'));
+      if (isFinite(n) && n >= 100) amt = n;
+    }
+    return amt;
+  }
   function latestRateInMessage(msg) {
-    var hits = findRateMatches(unquotedMessageText(messageBodyBox(msg)));
-    if (!hits.length) return null;
-    return hits[hits.length - 1].n;
+    var wrapAmt = lastUnquotedRateWrap(msg);
+    if (!isExpandedMsg(msg)) {
+      var snipHits = findRateMatches(collapsedSnippetText(msg));
+      if (snipHits.length) return snipHits[snipHits.length - 1].n;
+      var snipBare = bareRateInText(collapsedSnippetText(msg));
+      if (snipBare != null) return snipBare;
+      return wrapAmt;
+    }
+    var t = unquotedMessageText(messageBodyBox(msg));
+    var hits = findRateMatches(t);
+    if (hits.length) return hits[hits.length - 1].n;
+    var bare = bareRateInText(t);
+    if (bare != null) return bare;
+    return wrapAmt;
   }
   function senderRateMap(root) {
     var map = {};
     root = root || openThreadRoot();
     if (!root || !root.querySelectorAll) return map;
-    var msgs = expandedMessages(root);
-    if (!msgs.length) msgs = threadMessageNodes(root);
+    var msgs = threadMessageNodes(root);
     var i;
     for (i = 0; i < msgs.length; i++) {
       var msg = msgs[i];
@@ -4916,7 +4959,7 @@
     for (i = 0; i < all.length; i++) {
       if (hot.indexOf(all[i]) >= 0) continue;
       if (isExpandedMsg(all[i])) continue;
-      if (collapsedHasMc(all[i])) processOneMessage(all[i]);
+      if (collapsedHasMc(all[i]) || collapsedHasRate(all[i])) processOneMessage(all[i]);
     }
     var exp = expandedMessages(root);
     for (i = 0; i < exp.length; i++) {
