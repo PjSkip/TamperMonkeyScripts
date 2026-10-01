@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail Highway Carrier411 MC badges
 // @namespace    shipsierra.highway.gmail
-// @version      2026.36.7.23
+// @version      2026.39.4.1
 // @description  Highway and Carrier411 carrier info next to MC numbers in Gmail.
 // @author       Ivan Karpenko
 // @copyright    2026, ShipSierra.com (Ivan Karpenko)
@@ -12,8 +12,8 @@
 // @match        https://mail.google.com/*
 // @match        https://www.carrier411.com/*
 // @match        https://carrier411.com/*
-// @match        https://highway.com/broker/carriers/*
-// @match        https://*.highway.com/broker/carriers/*
+// @match        https://highway.com/broker/*
+// @match        https://*.highway.com/broker/*
 // @connect      highway.com
 // @connect      www.carrier411.com
 // @connect      carrier411.com
@@ -37,33 +37,26 @@
   var IGNORE_MC = { '137469': true };
   var IGNORE_DOT = { '3192183': true };
   var CACHE_KEY = 'hwy_mc_cache_v10';
-  var C411_CACHE_KEY = 'c411_fg_cache_v1';
+  var C411_CACHE_KEY = 'c411_fg_cache_v2';
+  var C411_CLAIM_KEY = 'c411_claim_v1';
   var SETTINGS_KEY = 'hwy_c411_badge_settings_v3';
-  var SCRIPT_VERSION = '2026.36.7.23';
+  var SCRIPT_VERSION = '2026.39.4.1';
   var SCRIPT_TITLE = 'ShipSierra.com Carrier Check on Hwy/C411';
-  var RELEASE_DATE = 'September 8, 2026';
+  var RELEASE_DATE = 'October 1, 2026';
   var ORG_MC_KEY = 'ss_org_mc';
   var ORG_MC_NEED_KEY = 'ss_org_mc_need';
   var NOTES_VER_KEY = 'ss_notes_ver';
   var CACHE_VER_KEY = 'ss_hwy_cache_ver';
   var ADDR_MC_KEY = 'ss_addr_mc_v2';
+  var SESSION_HWY_KEY = 'ss_session_hwy';
+  var SESSION_C411_KEY = 'ss_session_c411';
+  var C411_HOME_URL = 'https://www.carrier411.com/manager/mycarriers.cfm';
   var ADDR_MC_TTL = 24 * 60 * 60 * 1000;
   var CALLOUT_BG = '#fff6d9';
   var CARET_PX = 11;
   var HWY_FAIL_REPLY =
     'Thanks for your interest in this load. Unfortunately you do not pass our Highway.com requirements, so we are unable to proceed.';
-  var RELEASE_NOTES =
-    '• Fail (envelope) opens Reply or Reply all on that carrier’s email to say they do not pass Highway.\n' +
-    '• Pause in settings stops all checks. A red 1 on the truck means it is paused.\n' +
-    '• In a thread with many carriers, each bar’s $ is that sender’s bid, not another company’s.\n' +
-    '• Expanding a collapsed email still shows the carrier bar.\n' +
-    '• Turn on Cargo INS or other extra badges in settings and they load on bars already open.\n' +
-    '• Copy next to the MC copies MC only. Copy next to the $ copies MC and the rate.\n' +
-    '• Dollar and k quotes in the email are clickable rates. They are not links on the left inbox list.\n' +
-    '• Hover the $ on the bar to highlight that amount in that sender’s email.\n' +
-    '• Domain tooltip shows who emailed you first, then the Highway emails.\n' +
-    '• Long threads stay smooth: the open email is scanned now, others you expand are scanned in small idle slices.\n' +
-    '• Nested quoted history is not walked, so Expand all does not freeze Gmail. The first quote in an open email still yields a bar if it has the carrier MC.';
+  var RELEASE_NOTES = 'Bug fixes.\nA slider sets how many of the newest messages to check.';
   var HWY_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAHGSURBVHgB7ZZNTsJQEMdnWqWwqwsjyx5BtxJjOQF6AnoDuYF4MkgMuhRPQNlh3LCyBdOOry2B8j4LYWd/m5fMTOf937yPKUBNzX8HTQHRpD1EpGfOPG3eft2UDfHb1YwNXtlGhC+tzmIIGiwwKUTqC0aCucT2KSRHegIDWgHRa9sHblWFKgh5UwqijQDcTY7jBICdBgpPCBVE5RPY+iooBUSjtoeAfZmPEpwK8xMuFal8GrkuHCoAGuCrXLaVCJPZkExlsdk2rBwngEMFIKTK0jU638JkiWWrKpDRU88jYT25vE7R+gA1ocLuqT5g29Zt3S3GvP1MFpwgDgwPhAcHgjY9sGHM26VbwA7fPZwYtqC+7DAKAtjLF8ARKzSRHcYfp+WDSYD05TsRtuRg7211fvcdmoGeUO0iVmJ0QYOzWl1gd7m9MfuHsAEBGLAofZRdw4zonS2A9AuIG80BG4bbfGVnlfKfr39Dla8Zx7q3oJiQa1BbAcrGU4Lt17JcPsGf+0grgm9QuwqoG0/54xDMQcaYcoPKBegaD5d8bowBrBCza1BFBTSNZz+3eXVphSqVG5RV5E2Nfy4bQmNEBZEbelBTU8P4A46qjYFyL5/4AAAAAElFTkSuQmCC';
   var C411_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAC1UlEQVR4nMSWTUwTQRTHZ5cWqkAopAoVFA2CihEwaow1ICSGg0D0oKLx4MFEL3Iw4SAYY4gQ4sfJePOgXvwIEBWDMR4Uw4cGjdHwWTCBgBJaU8XWUtvd7vp/W7M0bS3hsOs7/Dp9b2by/pl5b9ZQd+sUY2xi1s7+bUFRjvJIbCnLz9oE8kxjM3yeG8cPx3Mxw6FMOSUNn/83aE23gmvSc0D3ghu0fx0FjXxixFr7LPm1VxA/LAZFcNv6ErDlxDUw2ZQaMcfrIx2tbc1gz3A3bcovbqu5Au5AS2nMgBAQwMrt1WD9wQvgT28AvN7eC844f4A5Gcng6ard4LqsdPBqB+l4NvAUTOATdFJQFifc1dgNTjt/gYdbO0DB71ejkt+rju+erwVL8rPBo601oMvjYrrcoqgCCIp0cyqLq5V/FG560E9+iWqCNxrJLfgolkD5ZaaZwK7+IVVBedF+sK33vi4KuOgS5qjzZJqzVMebiTkwxUBTZUVfqBPJEs0szKWZVbZC0PGdTiV1BdWKLMvsf1Uyp+KvyXLMxaFTsVrSGNU8jc0ppsUNlOT1OAMuLKMg5SITR78Mqf4jtnyw8+2Ymlgor2yLGaw/VgG2vfwA7tycCzrm6cx4TpdKNsjKnQkI1GdKt5SDeavpJbIV7FMnXay1gdMO6j/vxmYUH2UmiKT1Sc8gWLO3GPT4PGDnQDtoMq5keigI9byGQ01gxdbKiPCUc1Id3z5HtT00+Q3sG5kCC9dawNKiDeqcszfPgEmJdJdkpVq076YuN2WUkWqJGS67RG+ZOTkDPL7nJLhj4y6wwEp1Oz47Ar6fGADv9d4BA8orEm7aK5CjqtS9MA82P6JXbHD6U0RUFMSYGxk4Y0y/vgpeDb8Abzy/AgbEAFu+SVGLtFcgKR3x8uNGsM/+GkwyGJdcFhTiRaWwL1ftFTQ8rGN0Wz6y5ZskcHGieauoB2uu4A8AAAD//1ZDwTcAAAAGSURBVAMARiLtUypmc+4AAAAASUVORK5CYII=';
   var SET_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAd4klEQVR42u2cd5yV1bnvv2u9726z95Q9jQFGGaQozUbHRPAoehMJFgTJTWzR2BLRaM4xtjOMmkuiNyfXSDzJTTQxGJKIaXotETwwIiOgYA0RKQMMZQpT955d3rLW/WOXKQxNMcn93P0b9oeZXd613udZT/utZ23IIYcccsghhxxyyCGHHHLIIYcccsghhxxyyCGHHHLIIYcccsghhxxyyCGHEw7xzzQXrTWLFy8WW7ZsEQBjx44VW7Zs0StWrHABtNZiwYIF8v9lga9YsUIB+p9iMlprMX/+fGPmzJnm/68WYP4jhJ5ZxUIIF3Azr02dOnVQQ0ND4ZmTJo1qb2sRZ4w/Y0xzW9uGPzz77OsA11xzTUVjY+PUhJNwvdIrAFxcwMAwDHBTl3JdFwxSz9EzQmYgA8AwSLoxLNfFMAx8mBiGgeu6ODjp58GHL3399DWs1FUMrwGu0Xv66QuDQeo6Li5G+kmttRBC2BdccMEbd999dyTtffTfVQHz5883egt96tSpg0aMGH1uWVnJuWVlJZPLBw06tThcFCovLzf9/gAlJaW89OILXbt37Dht06ZNB4YNG/bMAw/cf77jukghEEKg0QgECAlaZ26WtIL7Kx8NKFwMYZIn/fiED4XC0haOdhEIPNKDBxOlFXEdJ6EsJAIpJVopNALZ/9ro1Hg6NW5qrNTcdFralpXkpz/9yRLg3urqaqOmpsb5eylAaq0RQrj19fX+h5cs+WJpOHz5KcOHXzxm7NiikSNHEA6H8Xg8CEBp3GQyicdjqpGjRhVMmzZt/KZNmw5UVFSMGjFipAso4FPHgo/tHayMvsEHsS3ssxuJ2N2Y0qTUKOIUXxWTg2cyNTSRQgpOhAwcwAwEguUAs2bNoqam5rN3QfPnzzdWrFjhCiE499xzv/jM8uU1V1x22aSJZ59FuLgErV1lWbbq7o5Jx7GFUi5aC0MpRSgUkkJI/frrr0cAXO1aSikjkUwIQxrHpQBHuwRlHg4Of2h/kadalrMp+g6ddhQBGMJIWRLgaoXCxRQmlf7BfDE8mxvLr2Zs4FSSbhKlFYYw0McQSzPWaBiGltIwtNb23ysGiHTUd0tLh466+pqF3519wQXzp0+fTigUVPF4XLe1HZSu60oQUgiBlBm/LVFKIYTQoVBIlpWF8wFQSCklhjSQ8tjl72qXoCePD2J/4+49NazuWIepJXlGHqXe4l5OJDPxlCq01rTaHfzkwC/5Xeuf+ObgG/i3wd/EixdLWUhx7HOQUmIYEtHPL34mKV11dbUUQmghpL5kzpwb/seSxW/e853vzJ99wfmuEKiWloMyEokaSmkhpURKQc+0+vhvVVBQyJgxE0an5H/8abOrXfymn+fanueiLVdQ215H2Cgk3wxlX089FCr9cLWLo11cFB5hUuIpxlUuNbsf4fJt19LsHMQnvSitjls26rPOgqqrq+VDDz2ktNbeW7/5jce/fOWVN06aNAmlXKe1rc1UygFxaBBLmSsgRB8pe71eOiMRBfR8Rhyf8JcdXMHNO+4iQIAiswBHu8eetaFxtINEUu4pY2XbGi6zruYPpz5NuVmKrW3k8axj1VcF8kQL/8EHH1RKqeBdd9310jduueXGKVOmOIlEQkciUdN1XaSUAwq/1x1n/abWGo/HQywadVNW0cdIji58w8/KjjV8c+fdBEUQjzSPS/j9FWFrm1KzhM3R9/najkUkdTKd5Rx7XdU/dJ1ABWhRU1OjtNbBu+6864VFi247/5RTqpxYLGomEnGhtcJID54R8GE1kL4hpRQej8Gw4Sefml75eqAg1/96Go1Hemi0m1m06x6kkphCfiKXIRCYwsj6+4wSVrbXsmT/Y3ilF6XUUe6plwH0m4N5ooqrxYsXi7q62Xmnn376nxctuv280tISJ5GwzEQiiRS9lq+WfYR8JIZEa41hePD5/OUDrZfeN51Oc9M3qfEaBo/sf5ydsd2UekpwtPOJhG9rh3Ynild6Ccq8rEsqMYt4ovEpLg9fzBl540m6SSTykNrjEAU47om3gMWLFxs1NTVqyNAhP/nGrbecX1ZWYltW0kwk4vSdT2YJi14PmX70/rtHqKZpYFmWPaCABrhZhcInvWyNbee3B/9IoVHwKYRvU+4p5ZHhi7kwPIu4SiDTxZ8hDLqdGEubnszOQxxDcJJSnFgLmDlzpllTU+PMvfTSf7/l5pu/WlJSbHd0dHr6rlB9HLyfRvRK74QAV2l5HNaIMATPtT1Pq91GqVn8ify+FJKYG+fRU2qYUzybayuu5MzN/0LEiWAKE1e75MsQr3asZmdiN8O9J2Np6+gBuV/6bJ6AIsu5+uqrL7vmmqtrpk6d5nR1dZqFhYX9fHp/19I73Tz0edd1IV36e70evB7TATCkOKoVGMLAdm1Wdb6ephmOn3g0hclBu5WvD76KOcWzAdgUeZ+IE+1TgJnSpNlqpbarjlPKh6EclaohhPjsybh0xuNefPHF413lPhWJRPWyZ54xvB5T2LaFYZjodEaTMTulVIaD6qME0plEJtDl54fShRhCSoPOrkhpml/RR86xNT7hZUdyFzsS9fiEd8DgKBBIIXEHsAxDSKJuNxOCY/jusPvQaPYnG7lh2x24uHgw+ihVABu7N3MdXz6sW0zNQQ+Yhn5SBYiamhpWr15t/vDxpcukN6/oh4//2O1qbzVM00O4tJSCgiKU61K/cwdev5+y0nK8fl+vyYjMP9AaaUi2bd3KFZddxrx5lxOJdGIYHmEYBkMHDxmhlBJP/OcT6qhlvwG7k3vocLoIijxUv9In49vjboJ8I9QnjRQIlE4RaEtHfp9CswCN5vad93HAaqLYDPeJJxqNKUx2JnahVIqe+LvQ0TNnzjTWrl3r/PCHj/3g8xdcdGa4tMx56Y/PmT7Tw7CRozhn1vlYySTKcfjTc79BAmdPmUrVyFFYtoXEAJFSgtYKn9fHjm1bMbTi5ptvwjQ9DBpUgRACn89LKBR0hBD8+Iknjho/AA66bTjaOWQ1CgRJnWSwt4IJeWOo7axDoZDIbGBtsQ/ycNW9TMufBMDj+3/O860vU+YpPSSYa60xkLSrTuI6nmVW+wfj3m5WSvPTZUEzZ840a2trndmzZy8Yf/akOwZXnuysWfWq2dLYhC8Q5IyJU4hEukhaFknLwrEdHMfBsm2SySRWwiJpJUgmkySTCSzLojvWzYa6N7js0ksJBAJ0d0ewrDjJZJxkMolSShyuAhvIxVjaPoKL8vHrU3/C78b8nIer7qXD6UQKiSkMOpxOLgyfx51DbwXg3egH1Ox+lLBZNKC7ylqUslOB/rDZtTgsGSGP1+/X1tY6X5o9e3jl8JE/Hj3udPXXD9+Xe+t34PF6mDRjBqbHzPjvviSX6EnUhMgEKo3fH2Drhx9QUVrMhRddSFdXF6ZpIEQqp5ZSZm/KMMQRC7AMgiIvQ6f1EVQqw4KgkQfADRVf5e7KRbTabbhaUewJ86MRSzCEpFvFuHX7v2Fr+7DMp0Cg0OTJAF7hOaaKWH0KKkLU1NQwf/58I1Q++JlJU2eUdra38s76Oiml5NTx46k8aRjJZDLLVArZU1CJdNDVgmyxZBgmse4of31vM9dcfRWGNA5ZIUKIXgtIHjELEmkjGeQtwyf7ZkCalLtIKIt5W65lW3wnAA9V3cPXK66iKdHAf5zyIKf4hyEQLN79CG9H36XACB129SNSlEeZWUJA+g//viOIXB6P3xdCKNvV3ztj8tQZ/mDQWf/GWplMJCgqLuXMSdOIxbr70sRap3aIeqWZmZVrejz4fD5e+8vLTJs6mWnTphKNRtKfF+n40N+ExRFTUCFSO1aneKso8xRja6ePP1ZoAtLPzsRurvzoehqtZgC+P7yaJ0/7CfNLLwHgxbaVPLH/SUrT1zhSsebgMCZwKghxSMAf0E3KT6CAjN+fM2fOnJFjxn178EnDnA/f3Ww27WvA9HiYPONzqdUmenJgrXWWIxFCY5gmfr+fQF4eXq+PzrY2fv+b5ZQVhlh02zeIRruR0ugjZCH659T6iFWwQGBpm0GeMibkjSWRrlz7k3Rhs5CPYttZ+NENRNwoQSOPr1V8BYXigNXE7TvuxSf9HJ3e0ZjC4Jz8KT37COLItYo8oj0cxu+vWbPGnTt37pDSwUP/96jTxumm/Xvlh+9sAq0ZPXYc5YMqsBKJnlzaMPD5/fj9fqQhkVISi0ao37GdjXVvsOrF53nr9dXMPu9zfP/7S3AcF8tKorXqV6DpPlRGbyKrr//vReChEFLwpfBFuLgD0gO2dig2i1jftYmrt95KUlkoncqG7tz5APuSBwhI32FXdEbYCZXklEAV54Sm4Cr3mNJQpZzjU8CWLVuEEEKH8oueOnvy9MFCSLXhjdelchyKSss5a/J0XKXID+WTF8hLFTJdXdRv+5iNb67jYEszyUSCAw27aNmzg6ElBZz3+Wl89SsLGTtmDK+88goffPD+MVWP8ig8UOo9qY6EL4UvYnTeCOJuAnkYJZR6inmh9S/cs+shutwIP298hj+3vkzYU3RU+sIQBlEVY2HJ5YQ9RVjaOsYKWB97HTBz5kxzxYoVzpy5c++cMHHyRcH8Amdd7WrTSSYoLC7mjImT6exsp7nxAK0Hm+lobcVKJgj4fZSWlDBu9HAqwvkMGTqUyspKkskEUkp8fh9+X4BwOMzYsWMJBAIo1+mVRcg+fr3nD9mvshSHdEBIkSq0is0wiyq+zq077yYgAqgBfLmtHco8pTzVuJwX21bSareRf6Sgm52dJO7GGRkYztfLvoqjnGz7SX8L7a8UKT3HpoAMz3PttV+fYSt7SVdHu1u3ttY4sLeByspKuro6eevNNzANSXlZKaOqhnPy56ZSXlaOz+cjaSWxkjYbujagtSYcDlNUVEg4XExeXhDTNFHKwbYtbDvZJ3hn3Yvuv1t7FBIufbOGMLCUxTVlX+bFjlW80vYaJWZ4wICqUASkn4N2Kx7hOepoIv2TIMnDJ91DmbeUuBPH7FdgHc4a+j9tHoHf10uXLq347W9/t7yktNT73tvrlWmYYsb0qYwefSojTqli8OAhBEMhbNumra2Vg60HaW5uwjBNCgvDjBw5ikg0ysgRIxg7bhyRSASlFJaVxLKSCJEJtLJX8O2bOh5uB0xrccjN9F51Go2JYGnV9/hC4kp2xnZTZBYcVgmeY8jjBQJDGDTZzdx/0l1cXjyHuJPAEPKYGd/+gX1ABcyaNcuora11vnHbbf/r0f/5yLCVf3nVOedzM8wzzjgTKQWdnREaGvbw0cdbiXXH8Xq9lJYWM7zqFMrKylIuRSm8Ph/mh+8Ti8WIRqNYloWUsldpnimmRB+3kinSDjfrlNJ6fj9kR0yniD1LOQz1DuZ3I59k/ravsSNeT4kZxtHuIcI+mvANYeBql2anhW8NuYXqof9Kwk1iSHlIoO9tjcfNBWVcz8QpUy5ZuGDBgnh3zJk8ZYo5bdoMOjs7WbduLdFojIqKCsaOGUtFxSDy8vKQ0sC2bRzHRSmVUoDHg98fIJAXJBQKYRhGvw2J3pVtqnpWSpNMWgNW8kof/ib7K0JrjSEkCTfBmMAoXh7zW26u/zYr29eQL/Pxp7OcTAfb4Va8THfcdTpd+E0fj1bVcEfFTSRdK12tiGPaKDpcO7TZP+VcvHixmjNnztC5l1zyn16vj61bP5Lz5s2nvb0dr9fL7NkXEgyGUMqlu7ubaDRCR0cHlmXjODaOk+J+bNvB6/Wxfft22tvbSSTiJBLxtAXIQ6gEKSWu6xIMBhk+vCr9ev9Zqz7Cz5T1A1lBD1lmkFAJTvIM5c+jl7G06Ul+3PgkexJ78QkvfuFPNWX16sbQOuWWbG0Tc1P+fVb4HP596LeZGppIwk1kY8GR2iAH3LFzj0BHp1NOdfsdd3xv2vRpg9fWrnWvvuorhpAGfr+PlpZmGhsbaWlpIR6P4zipVSuFwDQ9eLwmHo8HmW6cCgZDJJOJtGU4OI6LlD08Ucb9pPLjVOWbEqpO1wAia02Z1Mh1XVzXPYRTya5ZMfDWZcyNIRDcUXYTVxTO4dn2P/N/2l7lb/GP6XQ6sZXTk4MJgV/6GewtZ1r+JK4svpTZBbPwCJNoMoohjWPehM8sDsMwtBBC9edazP4thJdffvkFF1988Vffe+dd95K5c43de/awc+dOCgryaW5qJpRfwMknnUxhUSHFxSWEQiFM04MQAtu2saxURqO1JhgM4jgOgwYNYuzYscRisQFWRV9/r5RLMpkADJRyME2TUH4I0zRdj+nFMAyCweCn2kat9A7lztCt3HnSrRygma3WdvYm9hNRUUxMSjxhRviGcao5Cj++Pp8NEfqkwxqAtF07OJACxLPPPqumT58eqKoa/h/79x/QZ5x+ulhdW8vaug007t/LXd+6nS/NnUs8HicQCGBZSbZt28bOnbuIxWIUFRUxcuQITqo8iUTCIpGIozXE4zFisRjd3d29FKD7ZQ2i136wQEqB4zjk5eXJhoYG1r6+dvRV1163euXKVcP27t2H3++XrutiSInH6+216iVKudhWEq1BpLvu+lub1gqFwhQGXuHFKzzZvVwHQSMR9lHPSvUKSW2lY0EPN5XauFEIwOv1pXb/erXSpKr6nm5p13UoKSmJIURja1vHHwCeeOIJnVVAmmhz5l057wtVw6smTJ482d2wfr3x9nsfkpcX4IH772XMaafR0tJCYUEBGzZs5Omnn2bjxo0cPHgQy7bx+XwMHVLJhRddyHXXXUtpSUl6EmRp5Wy/fj/iPBMTMiSc47jk5eVx8OBB7r//ATqjsYCtxCzLsqlbvxGlNF6vBzuRpKmpkda2gziOQzAYorx8EOGSYlyV4qJkhk3VpJrFxaENXH2CcHazLvNDtsW8N6XsMU1QiqamRtpaMzLwUlZWTll5BQqwLQvDNB3Hts2C/NDjf/7j76sBG1I9s4fEgIryITOvueZqvau+Xm/c9C6F4SImnj6WCePH09TURHFxmOeff54HH3yI+l27cGy7j59raW5m68dbefutt3jooQc5++yzcBw1AHeTbuPI7or1POe6LnnBIC3NTdx73/3Ekg7hkhIcx3EDgYARyAvg8/rY17CHdze/TXt7e3YOzbqRht31DKk8iYmTp+IP5OG6NkKmD0mkGn4HjBta9y9F9AANBCLdLOah7WAL77y7ieampuy+t1aavXv2UDF4CGdPmkxxcQWOk+qmDxcXdQoh7DFjxni3bNli9aFXZs2alfJHpulHa7F+/UaKyweB6zBz5kxaW1spKipkXd2bPPDv1Wzfvh3bsrKC72E9Bd3RCGvXvs59991HS0szPp/3MAEr1QOkdY9AMllQS3Mz99x7P/GkQ0FhAbZlgdZGyu0Y7Nz2MatfW0l7e3u2gs62MwJ7du/itVdfJhaNoDU4to3rOCilskG8J5i7OI6D6zq4TvrhOn1ez3zOtm2EkDQe2M9rK1+hqbExO75SmY0nwb59e1n5l5dpbWlGCLBtG9dyTK21KCsrU4cl44QQwnFcDhxoYteObUyceBY+nx+A7u5unvjxE+zevbtPGjhp0iTmzZvH8OHDcdPHfZLJJHVvvskvf/Er/H4/rutmT6dkd03QfeqrtM+nqamRe+69j6TtUlBYiG3ZPRSDaRLp6uStjeuzVLVSiokTJ3LppZdy8sknZ+fQ1dXF5rffwuPxaCGEc6SHlNI5hve4hmG4jm2x8c112LaTPdI0btw4LrnkEkaMGJEdP5FIsHH9m6C1ltJw0u0QekCCcc2aNRmqNBLtjnDFFZdy2y03ct6smUSjUfLz83nn3XfYuHEDynWzN//II4+watUqfvGLX1BXV8e1117bM4F4nFdXrWL/gf1ZK9BKD0grKKXIz8+nqbmZe+67H8tV5BcU4th2qplXSjRgmgY7tn2cXokCwzB47LHHeO2113j66aepq6tj4cKF2Tk0NOyh8cB+YZoeU2tMnXK5qYdO/a/BRGAKIUwhhAmi5z293mfbtiGlNOp3bCcajWaFf//997N27Vp+9avU+Lfddlt2/I6Odhp215te0zBRynfUSvjjjz7e0tXZQVXVcGzLwrJtpNBIKfnggw9pb2/HkAaucrniiiv41re+xYEDB1BKEQgEWLJkCWvXrmXHjh0A7Nu7l+3btjN+7Pi0Fah0vq971QJgmib1u+qprl6M7WqCoRDd3dFU8M6wnIaBazs0NzVmlbZw4UJuueWW7BxCoRCPPvoo69ato6GhQQMi2tXRWjlkyKpoZ0QLmapsRdpfK61ASKRMJwpph5BaJwpUqkXF0UqXlZUO9hhmsrOj/TwhhNd1Xc4991zuueceOjo6cFwHn8/Hww8/TN26OjZt3qSFEKL1YEvn6NEjX83Ly3s17e5VbW3twAooLCw2ah76rvJ5/RqttJHaHBcg2LV7t/L5fETtiASYMWMGiUQi20Iej8cJh8OcddZZWQUkknG1ek2t+PjjbZheL1qlOJpM1pHqs0xVwXv37aWrs4tgKERnezuk40vmPaVlZSjDIJm0sonsjBkziMfj6PQ5glgsRmFhARMmjKehoUEJIQzbst9Y/utfLXQc91PVDl6vl2Qy6Rl96ql7tNYVgJ42fZpQSmG7Dh6Ph0QySSgYYvKUyWzavEkJIYxINPLeM8ueudJNn+Csqak5tBArLy/XAKWl5Zvrd22XrhISBCQdHNdVhiFwXSVFdr9WU19fj9frxXGcPplQQ0NDNqFzHVd6vD4cLYl1x5HSSG/b9ZTuqZOEUF4xhIohJ/W5Xt8OCNDKRUqRzVf27NmTijGOg0QgpMBVmn379mU+p/MLC4K27ZhCCMH8+YoVKz5JH5Sora1VgF9rHc9Mq6GhQXi8HpTr4gqJVhrDMNizZ0923n6f3+M4jiEWL9b0E35WAemcVPz0p0vfnjdv/n2RaPR2V6mAEMITDOb5AYrDRR+OHDHS2Lx502lCCL18+XJ55ZVXMnnyZOLxOMFgkJ/97Ge89dZbSCmVEEKOHDlyhWEYZ3RHuyuF0EpmCZd06pdRp9YkY7E0Wd6LI8qkhzpVPHm9HorC4WAkEtFSSrFs2TIWLFjA6RMmEE8kCOWHePxHj/P+++8jhNCGYQqPx/OylNIBTNK59/Ei7TIMj8cTGX/66e8AVVJK9cLzL8jV/7Wa2bNn093dTTAU4vfPPcdrr72GEEJr0CUlJe8ZhuGilDnACaWBCezHn3685LmnnguEQiHv+RdeODKRSJhXXHbZGz/4wQ/+27Jly34Xi8VswFNSUsL111/P8OHD2bBhA8uWLUMppbXWbll5ufPrZ589vaO5ufmFVasKS0XQdbyOiKfXT4A4BNK/ZZ4rDhAA4pkneiGZ7JAjRox31q1bd/XLL7+8xHEcW2vtqaio4Prrr6eyspL169ezbNmydIhQevDgIdbSpY+Pnjdv3t70QWn9aU973nTTrZcsX77sT5FIxAY8BQUF3HDDDYwaNYr33nuPX/7ylyQSCQ24JSUl5vXX33zOI498ty7z+WMa6Ai7TuZZZ038g5RSA1b6wHWGYFJCCAewQ6GQPu+8874Dn81J+/Hjx7+eFuYhc0ifx3ULCgr1nDlzbk15nvnGiRm9WmqtjZkzZz7r9Xoz4zsDjG95vV49e/ZFj6erf+O4vqwjvVpEdXU148aNEyuAsX/9q66pqdFa64KJEyf+5m9/+9sXBlqpRUVFTJ0+/YevvPTSvwohdHV1NSfoEIhesGCBXLFihXrzzffLb7jhv6/YsWP75xO9ujH6zGHq9Jo1a/5rcTKZlAOZ/ic9hgVCaK1DEydOXLp9+/arurq6Bhg/zPjxE55cu7b2xvSx1BP2BR0CwOfzMXfu3OvGTxi/YejQodFBFRXWsGHDOqZNm7Zq0aJFc4SQn/k3vGitjYsvvviWUaNG1VVWVnYPGlSRHDasqnXK1Kkvf/OOO/7lszqGq9Olu8/n48Ybb7xu7LixtVVVVfGKwYOdysrK9vHjx6+66aZbF/j9/s/mG2l0L+4gEAjw0ksvVT722GMj6uvrK3oNavAZf+FH5ne/38/zzz9/8mOPPTZi+/YD5T6f7zOfQ3p8AeD1eamrqxv5ox/99LQ333x/UK/xxWf9dUAD3aA4cf72mCzhHzqH9DjiHyiD1DZmdXW17L0q/974R8/hn0EGOeSQQw455JBDDjnkkEMOOeSQQw455JBDDjnkkEMOOeSQQw455JBDDjnk0Av/F3j61DqTYOC5AAAAAElFTkSuQmCC';
@@ -148,22 +141,22 @@
     assessment: { label: 'Pass / Fail', source: 'Highway rules_assessment.summary.overall_result' },
     units: { label: 'Power units', source: 'Highway equipment_portfolio.total_observed_power_units' },
     safety: { label: 'Safety (BASIC)', source: 'Highway sms_basics.unsafe_driving_measure (Unsafe Driving)' },
-    alerts: { label: 'Identity alerts (ID OK / DB)', source: 'Highway identity_alerts — open alerts and type' },
+    alerts: { label: 'Identity alerts (ID OK / DB)', source: 'Highway identity_alerts  -  open alerts and type' },
     cargo: { label: 'Cargo INS', source: 'Highway active motor truck cargo policy limit' },
     bipd: { label: 'Auto INS', source: 'Highway active automobile liability limit' },
     gl: { label: 'Gen Liab Ins', source: 'Highway active commercial general liability aggregate limit' },
-    connection: { label: 'Connected / No Connect', source: 'Yellow Connected only if Highway status is onboarded/connected. Any other status (Connect, connecting, none) is a red No Connect pill.' },
+    connection: { label: 'Connected / No Connect', source: 'Green Connected only if Highway status is onboarded/connected. Any other status (Connect, connecting, none) is a red No Connect pill.' },
     dnu: { label: 'Do Not Use (DNU)', source: 'Highway Do Not Use switch (connection.status do_not_dispatch)' },
     domain: { label: 'Email domain match', source: 'Green check: exact Highway email, or same unique company domain. Public (Gmail/Yahoo/iCloud): Unmatched (yellow) if Highway has that brand but a different address; Bad email (red) if Highway does not. Unique domain with no match: Domain NOT Match (red).' },
-    truckPlate: { label: 'Truck plate', source: 'Green check if a truck plate in the email is on this carrier’s Highway equipment list. Red if it is not.' },
-    trailerPlate: { label: 'Trailer plate', source: 'Green check if a trailer plate in the email is on this carrier’s Highway equipment list. Red if it is not.' },
-    truckVin: { label: 'Truck VIN', source: 'Green check if a truck VIN in the email is on this carrier’s Highway equipment list. Red if it is not.' }
+    truckPlate: { label: 'Truck plate', source: 'Green check if a truck plate in the email is on this carrier\'s Highway equipment list. Red if it is not.' },
+    trailerPlate: { label: 'Trailer plate', source: 'Green check if a trailer plate in the email is on this carrier\'s Highway equipment list. Red if it is not.' },
+    truckVin: { label: 'Truck VIN', source: 'Green check if a truck VIN in the email is on this carrier\'s Highway equipment list. Red if it is not.' }
   };
   var C411_FIELD_META = {
     fg: { label: 'FreightGuard (FG 8/12/26)', source: 'Carrier411 Reported Items date' },
     loss: { label: 'Freight loss', source: 'Carrier411 unjustified loss of freight. Shown only when reported.' },
     rating: { label: 'Safety rating (SAT/COND/UNSAT)', source: 'Carrier411 Safety Rating' },
-    related: { label: 'Related companies (Related cos)', source: 'Carrier411 “Related companies detected” on the company page' }
+    related: { label: 'Related companies (Related cos)', source: 'Carrier411 "Related companies detected" on the company page' }
   };
 
   GM_addStyle(
@@ -210,9 +203,10 @@
       '@keyframes ss-mc-pulse{0%,100%{background:#d93025;}50%{background:#ea4335;}}' +
       '.ss-intel-host{display:block;margin:1px 0 0;padding:0;text-align:right;max-width:100%;}' +
       'tr.ss-intel-tr td{padding:7px calc(2px + var(--ss-time-pad, 0px)) 1px 0 !important;text-align:right !important;vertical-align:top;' +
-      'border:0 !important;outline:none !important;box-shadow:none !important;width:100% !important;}' +
+      'border:0 !important;outline:none !important;box-shadow:none !important;width:100% !important;max-width:100% !important;' +
+      'box-sizing:border-box !important;overflow:hidden !important;}' +
       '.ss-intel-msg{display:inline-flex;flex-direction:column;align-items:flex-end;gap:0;width:auto;max-width:100%;' +
-      'box-sizing:border-box;margin:0 0 0 auto !important;padding:0;float:right !important;' +
+      'box-sizing:border-box;margin:0 0 0 auto !important;padding:0;float:none !important;overflow:hidden;' +
       'font:11px/1.25 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;color:#202124;}' +
       '.ss-intel-msg .ss-intel-card{display:flex;flex-direction:column;align-items:flex-start;gap:3px;margin:0;' +
       'padding:3px 8px;border:1px solid #e2e8f0 !important;border-radius:6px;min-width:0;max-width:100%;' +
@@ -277,6 +271,8 @@
       '.ss-fast-tip{position:fixed;z-index:2147483647;max-width:360px;padding:6px 8px;border-radius:6px;' +
       'background:#202124;color:#fff;font:12px/1.35 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;' +
       'white-space:pre-wrap;box-shadow:0 6px 18px rgba(15,23,42,.28);pointer-events:none;}' +
+      '.ss-fast-tip .ss-tip-hwy{display:inline-block;margin-top:2px;padding:1px 4px;border-radius:3px;' +
+      'background:rgba(236,206,140,.14);color:#fff;}' +
       'mark.ss-eq-hi,.ss-rate-wrap.ss-eq-hi{font:inherit;color:inherit;border-radius:2px;padding:0 1px;' +
       'box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);}' +
       'mark.ss-eq-hi-pass,.ss-rate-wrap.ss-eq-hi-pass{background:#86efac;}' +
@@ -317,6 +313,8 @@
       '#ss-hwy-c411-panel .ss-set-extra{flex:1 1 100%;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:1px 0 2px 38px;font-size:12px;color:#5f6368;cursor:default;}' +
       '#ss-hwy-c411-panel .ss-set-nlab{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;cursor:default;}' +
       '#ss-hwy-c411-panel .ss-set-num{width:58px;padding:3px 6px;border:1px solid #dadce0;border-radius:6px;font:12px/1.2 inherit;background:#fff;color:#202124;}' +
+      '#ss-hwy-c411-panel .ss-set-depth{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 2px 2px;font-size:12px;font-weight:700;color:#202124;}' +
+      '#ss-hwy-c411-panel .ss-set-range{width:100%;margin:4px 0 2px;accent-color:#1a73e8;}' +
       '#ss-hwy-c411-shade{position:fixed;inset:0;z-index:2147483646;background:rgba(15,23,42,.18);display:none;}' +
       '#ss-hwy-c411-shade.ss-open{display:block;}'
   );
@@ -329,6 +327,83 @@
     if (!d) return '';
     return String(Number(d));
   }
+  /*C411_PURE_START*/
+  function c411ClaimLive(claim, now) {
+    if (!claim || typeof claim.t !== 'number' || typeof now !== 'number') return false;
+    var gap = now - claim.t;
+    if (gap < 0) return false;
+    return gap < 20000;
+  }
+  function c411OwnsClaim(claim, ownerId) {
+    return !!(claim && ownerId && claim.owner === ownerId);
+  }
+  function c411ShouldClearClaim(claim, ownerId) {
+    return c411OwnsClaim(claim, ownerId);
+  }
+  function c411ShouldWaitForClaim(claim, now, ownerId) {
+    return c411ClaimLive(claim, now) && !c411OwnsClaim(claim, ownerId);
+  }
+  function c411ResultCoversClaim(hit, since) {
+    if (!hit || hit.login || hit.error || hit.ok !== true) return false;
+    if (!since) return true;
+    return (hit.ts || 0) >= since;
+  }
+  function c411SameLocalDay(ts, now) {
+    if (!ts || !now) return false;
+    var a = new Date(ts);
+    var b = new Date(now);
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  }
+  function c411PrevGood(prev, now) {
+    if (!prev || prev.ok !== true || prev.login || prev.error || !prev.ts) return false;
+    return c411SameLocalDay(prev.ts, now || Date.now());
+  }
+  function c411IsRealPage(data) {
+    return !!(data && data.ok === true && !data.login && !data.error && !data.challenge);
+  }
+  function c411ShouldStore(prev, incoming, requestStartedAt, now) {
+    if (!incoming || typeof incoming !== 'object') return false;
+    var good = c411PrevGood(prev, now);
+    if (!c411IsRealPage(incoming)) {
+      if (good) return false;
+      return !!(incoming.login || incoming.error);
+    }
+    if (good && requestStartedAt && prev.ts > requestStartedAt) return false;
+    return true;
+  }
+  function c411UiChoice(savedUi) {
+    return savedUi === 'inline' ? 'inline' : 'bar';
+  }
+  function c411OtherWindowDelay(rand) {
+    var r = typeof rand === 'number' ? rand : 0;
+    if (r < 0) r = 0;
+    if (r > 1) r = 1;
+    var jitter = Math.floor(r * 101);
+    if (jitter > 100) jitter = 100;
+    return 250 + jitter;
+  }
+  function foldC411CacheKeys(all) {
+    var out = {};
+    var changed = false;
+    if (!all || typeof all !== 'object') return { all: {}, changed: true };
+    Object.keys(all).forEach(function (k) {
+      var nk = normMc(k);
+      if (!nk) {
+        changed = true;
+        return;
+      }
+      if (nk !== String(k)) changed = true;
+      var prev = out[nk];
+      if (!prev || (all[k] && (all[k].ts || 0) >= ((prev && prev.ts) || 0))) {
+        if (prev) changed = true;
+        out[nk] = all[k];
+      } else {
+        changed = true;
+      }
+    });
+    return { all: out, changed: changed };
+  }
+  /*C411_PURE_END*/
   function loadOrgMc() {
     try {
       var n = normMc(GM_getValue(ORG_MC_KEY, '') || '');
@@ -359,6 +434,7 @@
   }
   var sessionHwy = null;
   var sessionC411 = null;
+  var c411LoginRefreshPending = false;
   function noticeCount() {
     if (isPaused()) return 1;
     var n = 0;
@@ -367,8 +443,23 @@
     if (sessionC411 === false) n += 1;
     return n;
   }
+  function persistSessionFlag(key, ok) {
+    var v = ok ? '1' : '0';
+    try {
+      if (String(GM_getValue(key, '')) === v) return;
+      GM_setValue(key, v);
+    } catch (e) {}
+  }
+  function sessionFlagOn(key) {
+    try {
+      return String(GM_getValue(key, '')) === '1';
+    } catch (e) {
+      return false;
+    }
+  }
   function setSessionHwy(ok) {
     var next = ok ? true : false;
+    persistSessionFlag(SESSION_HWY_KEY, next);
     if (sessionHwy === next) {
       syncMcBadge();
       return;
@@ -379,13 +470,84 @@
   }
   function setSessionC411(ok) {
     var next = ok ? true : false;
+    persistSessionFlag(SESSION_C411_KEY, next);
     if (sessionC411 === next) {
       syncMcBadge();
       return;
     }
     sessionC411 = next;
+    if (next) dropC411LoginCache();
     syncMcBadge();
     paintLoginNotes();
+    if (next) refreshOpenC411AfterLogin();
+    else showC411LoggedOut();
+  }
+  function showC411LoggedOut() {
+    if (sessionC411 !== false) return;
+    if (!/mail\.google|inbox\.google/i.test(location.hostname)) return;
+    var nodes = document.querySelectorAll('.hwy-mc-wrap[data-hwy-mc], .ss-intel-card[data-ss-mc]');
+    var seen = {};
+    var i;
+    for (i = 0; i < nodes.length; i++) {
+      var mc = nodes[i].getAttribute('data-hwy-mc') || nodes[i].getAttribute('data-ss-mc');
+      if (!mc || seen[mc]) continue;
+      seen[mc] = true;
+      var st = mcStore[mc];
+      if (!st) continue;
+      if (st.fg && !st.fg.login && !st.fg.error) continue;
+      st.fg = { ok: false, hasFg: false, login: true };
+      try {
+        notifyMc(mc);
+      } catch (e) {}
+    }
+  }
+  function refreshOpenC411AfterLogin() {
+    if (isPaused()) return;
+    if (!/mail\.google|inbox\.google/i.test(location.hostname)) return;
+    if (document.hidden) {
+      c411LoginRefreshPending = true;
+      return;
+    }
+    c411LoginRefreshPending = false;
+    var host = openThreadRoot();
+    if (!host) return;
+    var seen = {};
+    var nodes = host.querySelectorAll('.hwy-mc-wrap[data-hwy-mc], .ss-intel-card[data-ss-mc]');
+    var i;
+    for (i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      if (!isShown(node)) continue;
+      var mc = node.getAttribute('data-hwy-mc') || node.getAttribute('data-ss-mc');
+      if (!mc || seen[mc]) continue;
+      seen[mc] = true;
+      var st = mcStore[mc];
+      var fg = st && st.fg;
+      if (fg && !fg.login && !fg.error) continue;
+      var hit = getC411Cached(mc);
+      if (hit && !hit.login && !hit.error) {
+        applyC411ToMc(mc, hit);
+        continue;
+      }
+      if (c411Inflight[mc]) continue;
+      if (st) {
+        st._gotFg = false;
+        st.fg = null;
+      }
+      ensureMc(mc);
+    }
+  }
+  function httpAuthFail(err) {
+    var msg = String((err && err.message) || err || '');
+    return msg === 'HTTP 401' || msg === 'HTTP 403';
+  }
+  function c411HtmlLoggedOut(html) {
+    var parsed = parseC411HtmlToFg(html);
+    return !!(parsed && parsed.login);
+  }
+  function c411HtmlLooksLoggedIn(html) {
+    if (isC411Challenge(html) || c411HtmlLoggedOut(html)) return false;
+    var t = String(html || '');
+    return /USDOT\s+\d+/i.test(t) || /sign out|log out|my carriers/i.test(t);
   }
   function makeLoginPill(url) {
     var p = el('span', 'hwy-mc-pill hwy-mc-wait', 'Log In');
@@ -435,14 +597,18 @@
         setSessionHwy(true);
       })
       .catch(function (err) {
-        if (err && err.code === 'login') setSessionHwy(false);
+        if (err && err.code === 'login' && err.sure) setSessionHwy(false);
       });
   }
   function probeC411Session() {
-    gmGetHtml(C411_URL + 'MC000001')
+    gmGetHtml(C411_HOME_URL)
       .then(function (html) {
-        var parsed = parseC411HtmlToFg(html);
-        setSessionC411(!parsed.login);
+        if (isC411Challenge(html)) return;
+        if (c411HtmlLoggedOut(html)) {
+          setSessionC411(false);
+          return;
+        }
+        if (c411HtmlLooksLoggedIn(html)) setSessionC411(true);
       })
       .catch(function () {});
   }
@@ -560,7 +726,7 @@
     if (l.indexOf('sign') >= 0) return 'Sign in';
     if (l.indexOf('lookup') >= 0) return 'Error';
     if (l.indexOf('fail') >= 0) return 'Fail';
-    return label || '—';
+    return label || ' - ';
   }
   function isHwyFailLabel(label) {
     var a = String(label || '').toLowerCase();
@@ -593,6 +759,7 @@
     return {
       paused: false,
       ui: 'bar',
+      msgDepth: 20,
       layoutVer: 1,
       hwy: [
         { id: 'assessment', on: true },
@@ -605,9 +772,9 @@
         { id: 'connection', on: true },
         { id: 'dnu', on: true },
         { id: 'domain', on: true },
-        { id: 'truckPlate', on: true },
-        { id: 'trailerPlate', on: true },
-        { id: 'truckVin', on: true }
+        { id: 'truckPlate', on: false },
+        { id: 'trailerPlate', on: false },
+        { id: 'truckVin', on: false }
       ],
       c411: [
         { id: 'fg', on: true },
@@ -643,14 +810,13 @@
       });
       return ordered;
     }
-    var ui;
-    if (!saved.layoutVer) ui = 'bar';
-    else if (saved.ui === 'bar' || saved.ui === 'inline' || saved.ui === 'both') ui = saved.ui;
-    else ui = 'bar';
+    var ui = c411UiChoice(saved.ui);
     return {
       paused: !!saved.paused,
       ui: ui,
+      msgDepth: clampMsgDepth(saved.msgDepth),
       layoutVer: 1,
+      equipMig: saved.equipMig === 1 ? 1 : 0,
       hwy: merge(d.hwy, saved.hwy),
       c411: merge(d.c411, saved.c411),
       thresh: mergeThresh(saved.thresh)
@@ -971,28 +1137,56 @@
     var ds = hwyUniqueDomains(hwyEmails);
     return ds.indexOf(g) >= 0;
   }
+  function tipEscape(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+  function hwyPrimaryEmail(list) {
+    var i;
+    for (i = 0; i < list.length; i++) {
+      if (emailLocalPart(list[i]) === 'dispatch') return list[i];
+    }
+    return list.length ? list[0] : '';
+  }
   function domainTipText(from, matched, hwyEmails) {
     var list = hwyEmailList(hwyEmails);
     var kind = matched;
     if (matched === true) kind = 'exact';
     if (matched === false) kind = 'nomatch';
+    var status = 'Does not match Highway email';
+    if (!from || kind === 'none') status = '';
+    else if (kind === 'team') status = 'Team email';
+    else if (kind === 'exact') status = 'Exact match on Highway';
+    else if (kind === 'domain') status = 'Domain matches Highway';
+    else if (kind === 'unmatched') status = 'Not the Highway address';
+    else if (kind === 'bad') status = 'Not on Highway';
+    var primary = hwyPrimaryEmail(list);
+    var plain = [];
     var lines = [];
     if (!from || kind === 'none') {
-      lines.push('No carrier email in this message');
+      plain.push('No carrier email in this message');
+      lines.push({ text: 'No carrier email in this message' });
     } else {
-      lines.push(from);
-      if (kind === 'team') lines.push('Team email');
-      else if (kind === 'exact') lines.push('Exact match on Highway');
-      else if (kind === 'domain') lines.push('Domain matches Highway');
-      else if (kind === 'unmatched') lines.push('Not the Highway address');
-      else if (kind === 'bad') lines.push('Not on Highway');
-      else lines.push('Does not match Highway email');
+      plain.push(from);
+      lines.push({ text: from });
+      if (status) {
+        plain.push(status);
+        lines.push({ text: status });
+      }
+    }
+    if (primary) {
+      plain.push(primary);
+      lines.push({ text: primary, hi: true });
     }
     var i;
     for (i = 0; i < list.length; i++) {
-      if (list[i] && lines.indexOf(list[i]) < 0) lines.push(list[i]);
+      if (!list[i] || list[i] === primary) continue;
+      plain.push(list[i]);
+      lines.push({ text: list[i] });
     }
-    return lines.join('\n');
+    return { plain: plain.join('\n'), lines: lines };
   }
   function isBoardOrSystemAddr(addr) {
     var e = normEmail(addr);
@@ -1327,8 +1521,8 @@
     var bits = detail.parts.map(function (p) {
       return p.label + ' ' + formatSafety(p.value);
     });
-    var extra = detail.date ? ' · ' + detail.date : '';
-    return 'Unsafe Driving shown: ' + bits.join(' · ') + extra;
+    var extra = detail.date ? '  ·  ' + detail.date : '';
+    return 'Unsafe Driving shown: ' + bits.join('  ·  ') + extra;
   }
   function logoImg(src, alt) {
     var img = document.createElement('img');
@@ -1354,7 +1548,18 @@
       parsed = null;
     }
     settingsMem = mergeSettings(parsed);
-    if (parsed && !parsed.layoutVer) saveSettings(settingsMem);
+    var equipFlip = !parsed || parsed.equipMig !== 1;
+    var bothUi = !!(parsed && parsed.ui === 'both');
+    if (equipFlip) {
+      ['truckPlate', 'trailerPlate', 'truckVin'].forEach(function (id) {
+        settingsMem.hwy.forEach(function (row) {
+          if (row.id === id) row.on = false;
+        });
+      });
+      settingsMem.equipMig = 1;
+    }
+    if (bothUi) settingsMem.ui = 'bar';
+    if (equipFlip || bothUi || (parsed && !parsed.layoutVer)) saveSettings(settingsMem);
     return settingsMem;
   }
   function isPaused() {
@@ -1425,8 +1630,20 @@
       if (hwyCacheMem) GM_setValue(CACHE_KEY, JSON.stringify(hwyCacheMem));
     } catch (e) {}
     try {
-      if (c411CacheMem) GM_setValue(C411_CACHE_KEY, JSON.stringify(c411CacheMem));
-    } catch (e2) {}
+      if (!c411CacheMem) return;
+      var disk = {};
+      try {
+        disk = JSON.parse(GM_getValue(C411_CACHE_KEY, '{}') || '{}');
+      } catch (e2) {}
+      var merged = disk || {};
+      Object.keys(c411CacheMem).forEach(function (k) {
+        var mine = c411CacheMem[k];
+        var theirs = merged[k];
+        if (!theirs || (mine && mine.ts && (!theirs.ts || mine.ts >= theirs.ts))) merged[k] = mine;
+      });
+      c411CacheMem = merged;
+      GM_setValue(C411_CACHE_KEY, JSON.stringify(merged));
+    } catch (e3) {}
   }
   function scheduleCacheWrite() {
     if (cacheWriteTimer) return;
@@ -1452,11 +1669,36 @@
     } catch (e) {
       c411CacheMem = {};
     }
+    if (!c411CacheMem || typeof c411CacheMem !== 'object' || Array.isArray(c411CacheMem)) c411CacheMem = {};
+    var folded = foldC411CacheKeys(c411CacheMem);
+    c411CacheMem = folded.all;
+    if (folded.changed) {
+      try {
+        GM_setValue(C411_CACHE_KEY, JSON.stringify(c411CacheMem));
+      } catch (e2) {}
+    }
     return c411CacheMem;
   }
   function writeC411Cache(obj) {
     c411CacheMem = obj || {};
-    scheduleCacheWrite();
+    try {
+      GM_setValue(C411_CACHE_KEY, JSON.stringify(c411CacheMem));
+    } catch (e) {
+      scheduleCacheWrite();
+    }
+  }
+  function dropC411LoginCache() {
+    var all = readC411Cache();
+    var mc;
+    var changed = false;
+    for (mc in all) {
+      if (!Object.prototype.hasOwnProperty.call(all, mc)) continue;
+      if (all[mc] && (all[mc].login || all[mc].error)) {
+        delete all[mc];
+        changed = true;
+      }
+    }
+    if (changed) writeC411Cache(all);
   }
   function sameLocalDay(ts) {
     if (!ts) return false;
@@ -1487,6 +1729,8 @@
     for (i = 0; i < keys.length - CACHE_MAX; i++) delete all[keys[i]];
   }
   function getC411Cached(mc) {
+    mc = normMc(mc);
+    if (!mc) return null;
     var all = readC411Cache();
     var hit = all[mc];
     if (!cacheStillGood(hit)) return null;
@@ -1494,19 +1738,12 @@
     if (extrasOn('c411', ['rating']) && hit.extras !== 2) return null;
     return hit;
   }
-  function setC411Cached(mc, data) {
+  function setC411Cached(mc, data, startedAt) {
+    mc = normMc(mc);
+    if (!mc || !data) return;
     var all = readC411Cache();
     var prev = all[mc];
-    if (
-      prev &&
-      cacheStillGood(prev) &&
-      prev.ok &&
-      !prev.login &&
-      !prev.error &&
-      (data.login || data.error)
-    ) {
-      return;
-    }
+    if (!c411ShouldStore(prev, data, startedAt == null ? Date.now() : startedAt, Date.now())) return;
     all[mc] = {
       ok: data.ok !== false && !data.login && !data.error,
       hasFg: !!data.hasFg,
@@ -1518,6 +1755,7 @@
       rating: data.rating || null,
       related: !!data.related,
       loss: !!data.loss,
+      items: Array.isArray(data.items) ? data.items.slice(0, 2) : [],
       extras: 2,
       login: !!data.login,
       error: !!data.error,
@@ -1586,18 +1824,26 @@
   function hwyLoginError() {
     var err = new Error('login');
     err.code = 'login';
+    err.sure = false;
     return err;
   }
-  function looksLikeHwyLogin(res) {
+  function hwyLogoutEvidence(res) {
+    var text = String((res && res.responseText) || '');
+    if (/Just a moment/i.test(text) || /challenges\.cloudflare\.com/i.test(text)) return false;
     var status = res && res.status;
-    if (status === 401 || status === 403) return true;
     var url = String((res && res.finalUrl) || '');
     if (/\/broker\/login|\/onboarding\/sign-|\/users\/sign_in|\/login/i.test(url)) return true;
-    var text = String((res && res.responseText) || '');
+    if (status === 401) return true;
     var trim = text.replace(/^\s+/, '');
-    if (!trim) return false;
-    if (trim.charAt(0) === '{' || trim.charAt(0) === '[') return false;
+    if (!trim || trim.charAt(0) === '{' || trim.charAt(0) === '[') return false;
     return /<html|<!doctype/i.test(trim) && /password|sign in|log in|broker\/login/i.test(text);
+  }
+  function looksLikeHwyLogin(res) {
+    if (hwyLogoutEvidence(res)) return true;
+    var text = String((res && res.responseText) || '');
+    if (/Just a moment/i.test(text) || /challenges\.cloudflare\.com/i.test(text)) return false;
+    var status = res && res.status;
+    return status === 401 || status === 403;
   }
   var hwyAborts = {};
   function abortHwy(mc) {
@@ -1627,7 +1873,9 @@
         headers: { Accept: 'application/json' },
         onload: function (res) {
           if (looksLikeHwyLogin(res)) {
-            finish(reject, hwyLoginError());
+            var loginErr = hwyLoginError();
+            loginErr.sure = hwyLogoutEvidence(res);
+            finish(reject, loginErr);
             return;
           }
           if (res.status < 200 || res.status >= 300) {
@@ -1638,7 +1886,9 @@
             finish(resolve, JSON.parse(res.responseText));
           } catch (e) {
             if (looksLikeHwyLogin(res) || /<html|<!doctype/i.test(res.responseText || '')) {
-              finish(reject, hwyLoginError());
+              var loginErr2 = hwyLoginError();
+              loginErr2.sure = hwyLogoutEvidence(res);
+              finish(reject, loginErr2);
               return;
             }
             finish(reject, e);
@@ -1721,10 +1971,97 @@
     return { cargoAmt: cargoAmt, bipdAmt: bipdAmt };
   }
 
+  function prettyFgReason(s) {
+    var t = String(s || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+    if (!t) return '';
+    if (/unethical or deceptive business practices/.test(t)) {
+      return 'Unethical or deceptive business practices';
+    }
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }
+  function fgDateMs(s) {
+    var c = compactFgDate(s);
+    var m = String(c || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if (!m) return 0;
+    var y = Number(m[3]);
+    if (y < 100) y += 2000;
+    return Date.UTC(y, Number(m[1]) - 1, Number(m[2]));
+  }
+  function fgItemsFromPlain(plain) {
+    var start = String(plain || '').search(/Reported Items/i);
+    if (start < 0) return [];
+    var slice = String(plain).slice(start, start + 2500);
+    var cut = slice.search(/Carrier Qualification|BASIC PERCENTILE|Insurance Status/i);
+    if (cut > 40) slice = slice.slice(0, cut);
+    var lines = slice.split(/\n+/);
+    var dateRe = /((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4})/i;
+    var reasons = [];
+    var dates = [];
+    var i;
+    for (i = 0; i < lines.length; i++) {
+      var line = lines[i].replace(/\s+/g, ' ').trim();
+      if (!line) continue;
+      var dm = line.match(dateRe);
+      if (dm) {
+        dates.push(dm[1]);
+        continue;
+      }
+      if (/^reported items$/i.test(line) || /view report|freightguard|submitted by|days$/i.test(line)) continue;
+      if (!/^[A-Za-z][A-Za-z0-9 /,&'-]{3,70}$/.test(line)) continue;
+      var reason = prettyFgReason(line);
+      if (reason) reasons.push(reason);
+    }
+    var out = [];
+    var n = Math.max(reasons.length, dates.length);
+    for (i = 0; i < n; i++) {
+      if (!reasons[i]) continue;
+      out.push({ date: dates[i] || '', type: reasons[i] });
+    }
+    return out;
+  }
+  function fgShownItems(items) {
+    var list = items || [];
+    var now = Date.now();
+    var recent = [];
+    var i;
+    for (i = 0; i < list.length; i++) {
+      var ms = fgDateMs(list[i].date);
+      if (ms && now - ms < 730 * 86400000) recent.push(list[i]);
+    }
+    var pool = recent.length > 2 ? recent : list;
+    return pool.slice(0, 2);
+  }
+  function fgTipText(fg) {
+    var items = (fg && fg.items) || [];
+    var lines = [];
+    var i;
+    for (i = 0; i < items.length; i++) {
+      var reason = prettyFgReason(items[i].type);
+      if (!reason) continue;
+      var d = compactFgDate(items[i].date);
+      lines.push(d ? d + ' ' + reason : reason);
+    }
+    if (!lines.length && fg && fg.type) {
+      var one = prettyFgReason(fg.type);
+      var day = compactFgDate(fg.date);
+      if (one) lines.push(day ? day + ' ' + one : one);
+    }
+    if (fg && fg.count > 1 && fg.count > lines.length) lines.push(fg.count + ' FreightGuard reports');
+    return lines.join('\n') || 'FreightGuard';
+  }
   function parseC411Page(html) {
     var plain = stripHtml(html);
-    var loggedOut = /type=["']password["']/i.test(html) && !/USDOT\s+\d+/i.test(plain);
-    if (loggedOut || /please log in|member login|unauthorized=1/i.test(plain + html)) {
+    var hasUsdot = /USDOT\s+\d+/i.test(plain);
+    var loggedOut = /type=["']password["']/i.test(html) && !hasUsdot;
+    if (
+      loggedOut ||
+      (/unauthorized=1/i.test(html) && !hasUsdot) ||
+      (/please log in/i.test(plain) && !hasUsdot) ||
+      (/member login/i.test(plain) && !hasUsdot && /type=["']password["']/i.test(html))
+    ) {
       return { ok: false, login: true, hasFg: false };
     }
 
@@ -1734,13 +2071,21 @@
     var dateRe = /\b((?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\.?\s+\d{1,2},\s+\d{4})\b/gi;
     var dm;
     while ((dm = dateRe.exec(section))) dates.push(dm[1]);
+    var items = fgItemsFromPlain(plain);
+    if (!items.length && dates.length) {
+      var tm0 = section.match(/REPORTED ITEMS<\/strong><\/span>\s*(?:<br[^>]*>\s*)+<span[^>]*>([^<]+)/i);
+      var rawType = tm0 ? tm0[1].replace(/\s+/g, ' ').trim() : '';
+      if (rawType) items.push({ date: dates[0] || '', type: rawType });
+    }
 
-    var type = null;
-    var tm = section.match(/REPORTED ITEMS<\/strong><\/span>\s*(?:<br[^>]*>\s*)+<span[^>]*>([^<]+)/i);
-    if (tm) type = tm[1].replace(/\s+/g, ' ').trim();
+    var type = items.length ? items[0].type : null;
     if (!type) {
-      var tm2 = plain.match(/REPORTED ITEMS\s+([A-Z][A-Z0-9 \/,\-]{4,80})/);
-      if (tm2) type = tm2[1].trim();
+      var tm = section.match(/REPORTED ITEMS<\/strong><\/span>\s*(?:<br[^>]*>\s*)+<span[^>]*>([^<]+)/i);
+      if (tm) type = tm[1].replace(/\s+/g, ' ').trim();
+      if (!type) {
+        var tm2 = plain.match(/REPORTED ITEMS\s+([A-Z][A-Z0-9 \/,\-]{4,80})/);
+        if (tm2) type = tm2[1].trim();
+      }
     }
 
     var countM = plain.match(/(\d+)\s+FreightGuard Reports?\s+was submitted/i);
@@ -1776,12 +2121,14 @@
       plain.match(/CURRENT CARRIER SAFETY RATING[:\s]*(SATISFACTORY|CONDITIONAL|UNSATISFACTORY)/i);
     if (rm) rating = rm[1];
 
+    var shown = fgShownItems(items);
     return {
       ok: true,
       login: false,
       hasFg: !!hasFg,
-      date: dates[0] || null,
-      type: type,
+      date: (shown[0] && shown[0].date) || dates[0] || null,
+      type: (shown[0] && shown[0].type) || type,
+      items: shown,
       count: count || (hasFg ? 1 : 0),
       authority: authority,
       cargoAmt: cov.cargoAmt,
@@ -1794,6 +2141,7 @@
 
   var c411Inflight = {};
   var c411Clicked = {};
+  var c411Waiters = {};
   function markC411Clicked(mc) {
     if (!mc) return;
     c411Clicked[mc] = Date.now();
@@ -1815,19 +2163,35 @@
       } catch (e) {}
     });
   }
+  var c411PaintTimer = 0;
+  function armC411PaintWatch() {
+    if (c411PaintTimer || document.hidden || isPaused()) return;
+    c411PaintTimer = setInterval(function () {
+      if (document.hidden || isPaused() || !document.querySelector('.hwy-c411-hit .hwy-mc-wait')) {
+        clearInterval(c411PaintTimer);
+        c411PaintTimer = 0;
+        return;
+      }
+      c411CacheMem = null;
+      refreshC411WrapsFromCache();
+      if (typeof schedulePaintBar === 'function') schedulePaintBar();
+    }, 600);
+  }
   function refreshC411WrapsFromCache() {
     if (!/mail\.google|inbox\.google/i.test(location.hostname)) return;
     var host = openThreadRoot() || document;
-    var wraps = host.querySelectorAll('.hwy-mc-wrap');
-    var i;
     var seen = {};
-    for (i = 0; i < wraps.length; i++) {
-      var mc = wraps[i].getAttribute('data-hwy-mc');
-      if (!mc || seen[mc]) continue;
+    function take(mc) {
+      if (!mc || seen[mc]) return;
       seen[mc] = true;
       var hit = getC411Cached(mc);
       if (hit) applyC411ToMc(mc, hit);
     }
+    var wraps = host.querySelectorAll('.hwy-mc-wrap');
+    var cards = host.querySelectorAll('.ss-intel-card[data-ss-mc]');
+    var i;
+    for (i = 0; i < wraps.length; i++) take(wraps[i].getAttribute('data-hwy-mc'));
+    for (i = 0; i < cards.length; i++) take(cards[i].getAttribute('data-ss-mc'));
   }
   function retryClickedC411() {
     if (!/mail\.google|inbox\.google/i.test(location.hostname)) return;
@@ -1847,6 +2211,12 @@
         return;
       }
       n += 1;
+      if (mcStore[mc]) {
+        mcStore[mc].fg = null;
+        try {
+          notifyMc(mc);
+        } catch (eLoad) {}
+      }
       lookupC411(mc, true).then(function (fg) {
         applyC411ToMc(mc, fg || { error: true });
         if (fg && !fg.login && !fg.error) delete c411Clicked[mc];
@@ -1855,11 +2225,28 @@
   }
   if (typeof GM_addValueChangeListener === 'function') {
     GM_addValueChangeListener(C411_CACHE_KEY, function () {
-      c411CacheMem = null;
-      refreshC411WrapsFromCache();
+      try {
+        c411CacheMem = null;
+        notifyC411Waiters();
+        refreshC411WrapsFromCache();
+      } catch (e) {}
+    });
+    GM_addValueChangeListener(C411_CLAIM_KEY, function () {
+      try {
+        c411ClaimMem = null;
+        notifyC411Waiters();
+      } catch (e) {}
     });
     GM_addValueChangeListener(CACHE_KEY, function () {
       hwyCacheMem = null;
+    });
+    GM_addValueChangeListener(SESSION_C411_KEY, function (name, oldV, newV) {
+      if (newV === '1') setSessionC411(true);
+      else if (newV === '0') setSessionC411(false);
+    });
+    GM_addValueChangeListener(SESSION_HWY_KEY, function (name, oldV, newV) {
+      if (newV === '1') setSessionHwy(true);
+      else if (newV === '0') setSessionHwy(false);
     });
     GM_addValueChangeListener(SETTINGS_KEY, function () {
       settingsMem = null;
@@ -1871,7 +2258,9 @@
         if (
           ae &&
           ae.classList &&
-          (ae.classList.contains('ss-set-num') || ae.classList.contains('ss-org-mc'))
+          (ae.classList.contains('ss-set-num') ||
+            ae.classList.contains('ss-set-range') ||
+            ae.classList.contains('ss-org-mc'))
         ) {
           return;
         }
@@ -1879,106 +2268,360 @@
       } catch (e2) {}
     });
   }
-  function forgetC411Cached(mc) {
-    var all = readC411Cache();
-    if (!all[mc]) return;
-    delete all[mc];
-    writeC411Cache(all);
+  var c411ClaimMem = null;
+  var c411OwnerId = 'o' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  var c411Heartbeats = {};
+  function readC411Claims() {
+    if (c411ClaimMem && typeof c411ClaimMem === 'object') return c411ClaimMem;
+    try {
+      var parsed = JSON.parse(GM_getValue(C411_CLAIM_KEY, '{}') || '{}');
+      c411ClaimMem = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch (e) {
+      c411ClaimMem = {};
+    }
+    return c411ClaimMem;
   }
-  function gmGetHtml(url) {
+  function writeC411Claims(obj) {
+    c411ClaimMem = obj && typeof obj === 'object' ? obj : {};
+    try {
+      GM_setValue(C411_CLAIM_KEY, JSON.stringify(c411ClaimMem));
+    } catch (e) {}
+  }
+  function claimFor(mc) {
+    mc = normMc(mc);
+    if (!mc) return null;
+    var all = readC411Claims();
+    return all[mc] || null;
+  }
+  function writeOwnClaim(mc) {
+    mc = normMc(mc);
+    if (!mc) return false;
+    var all = readC411Claims();
+    var cur = all[mc];
+    if (cur && cur.owner !== c411OwnerId && c411ClaimLive(cur, Date.now())) return false;
+    all[mc] = { owner: c411OwnerId, mc: mc, t: Date.now() };
+    writeC411Claims(all);
+    return true;
+  }
+  function touchOwnClaim(mc) {
+    mc = normMc(mc);
+    if (!mc) return;
+    var all = readC411Claims();
+    var cur = all[mc];
+    if (!c411OwnsClaim(cur, c411OwnerId)) return;
+    cur.t = Date.now();
+    all[mc] = cur;
+    writeC411Claims(all);
+  }
+  function clearOwnClaim(mc) {
+    mc = normMc(mc);
+    if (!mc) return;
+    var all = readC411Claims();
+    if (!c411ShouldClearClaim(all[mc], c411OwnerId)) return;
+    delete all[mc];
+    writeC411Claims(all);
+  }
+  function stopC411Heartbeat(mc) {
+    mc = normMc(mc);
+    if (!mc || !c411Heartbeats[mc]) return;
+    clearInterval(c411Heartbeats[mc]);
+    delete c411Heartbeats[mc];
+  }
+  function startC411Heartbeat(mc) {
+    mc = normMc(mc);
+    if (!mc) return;
+    stopC411Heartbeat(mc);
+    c411Heartbeats[mc] = setInterval(function () {
+      touchOwnClaim(mc);
+    }, 5000);
+  }
+  function notifyC411Waiters(mc) {
+    try {
+      var keys = mc ? [normMc(mc)] : Object.keys(c411Waiters || {});
+      keys.forEach(function (k) {
+        if (!k) return;
+        var list = (c411Waiters && c411Waiters[k]) || [];
+        list.slice().forEach(function (fn) {
+          try {
+            fn();
+          } catch (e) {}
+        });
+      });
+    } catch (e2) {}
+  }
+  function waitForC411Settle(mc, since) {
+    mc = normMc(mc);
+    return new Promise(function (resolve) {
+      var done = false;
+      function finish(out) {
+        if (done) return;
+        done = true;
+        clearInterval(timer);
+        var list = c411Waiters[mc] || [];
+        c411Waiters[mc] = list.filter(function (fn) {
+          return fn !== onWake;
+        });
+        resolve(out);
+      }
+      function look() {
+        try {
+          var hit = getC411Cached(mc);
+          if (c411ResultCoversClaim(hit, since)) {
+            finish({ kind: 'result', hit: hit });
+            return;
+          }
+          if (!c411ClaimLive(claimFor(mc), Date.now())) finish({ kind: 'dead' });
+        } catch (e) {
+          finish({ kind: 'dead' });
+        }
+      }
+      function onWake() {
+        look();
+      }
+      if (!c411Waiters[mc]) c411Waiters[mc] = [];
+      c411Waiters[mc].push(onWake);
+      var timer = setInterval(look, 400);
+      look();
+    });
+  }
+  function gmGetHtml(url, hooks) {
+    hooks = hooks || {};
     return new Promise(function (resolve, reject) {
+      var settled = false;
       GM_xmlhttpRequest({
         method: 'GET',
         url: url,
         anonymous: false,
         timeout: 15000,
+        // cf_clearance is stored only for the carrier411.com site partition. A Gmail request omits it unless this is set, and Cloudflare then returns 403.
+        cookiePartition: { topLevelSite: 'https://carrier411.com' },
         headers: { Accept: 'text/html' },
         onload: function (res) {
+          var html = String(res.responseText || '');
+          if (settled) {
+            try {
+              if (typeof hooks.onLate === 'function') hooks.onLate(html, res);
+            } catch (eLate) {}
+            return;
+          }
+          settled = true;
           if (res.status === 429) {
             reject(new Error('429'));
             return;
           }
           if (res.status < 200 || res.status >= 300) {
+            if (!isC411Challenge(html) && c411HtmlLoggedOut(html)) {
+              resolve(html);
+              return;
+            }
             reject(new Error('HTTP ' + res.status));
             return;
           }
-          resolve(String(res.responseText || ''));
+          resolve(html);
         },
         onerror: function () {
+          if (settled) return;
+          settled = true;
           reject(new Error('network'));
         },
         ontimeout: function () {
+          if (settled) return;
+          settled = true;
           reject(new Error('timeout'));
         }
       });
     });
   }
   function parseC411HtmlToFg(html) {
-    var parsed = parseC411Page(html);
-    var text = String(html || '');
-    if (
-      /unauthorized=1|link\.cfm/i.test(text) ||
-      (/unauthorized/i.test(text) && !/USDOT\s+\d+/i.test(text)) ||
-      (/Login Message/i.test(text) && !/USDOT\s+\d+/i.test(text))
-    ) {
-      return { ok: false, hasFg: false, login: true };
-    }
-    return parsed;
+    return parseC411Page(html);
   }
-  function fetchC411Direct(mc) {
-    var url = C411_URL + encodeURIComponent(docketFromMc(mc));
-    return gmGetHtml(url).then(function (html) {
+  function isC411Challenge(html) {
+    var t = String(html || '');
+    return /Just a moment/i.test(t) || /challenges\.cloudflare\.com/i.test(t);
+  }
+  function c411FailureRecord(err) {
+    var msg = String((err && err.message) || err || '');
+    if (httpAuthFail(err) && sessionC411 === false) return { ok: false, hasFg: false, login: true };
+    var failed = { ok: false, hasFg: false, error: true };
+    if (msg === '429') failed.slow = true;
+    if (msg.indexOf('HTTP') === 0) failed.challenge = msg === 'HTTP 403';
+    return failed;
+  }
+  function storeC411Incoming(mc, incoming, startedAt) {
+    mc = normMc(mc);
+    if (!mc || !incoming) return;
+    if (incoming.login) setSessionC411(false);
+    else if (c411IsRealPage(incoming)) setSessionC411(true);
+    setC411Cached(mc, incoming, startedAt);
+  }
+  function acceptLateC411Html(mc, html, startedAt) {
+    try {
+      if (!html || isC411Challenge(html)) return;
       var parsed = parseC411HtmlToFg(html);
-      if (parsed.login) {
-        setSessionC411(false);
-        setC411Cached(mc, { hasFg: false, login: true, ok: false });
-      } else {
-        setSessionC411(true);
-        setC411Cached(mc, parsed);
+      if (!c411IsRealPage(parsed)) return;
+      storeC411Incoming(mc, parsed, startedAt);
+      clearOwnClaim(mc);
+    } catch (e) {}
+  }
+  function fetchC411Direct(mc, startedAt) {
+    mc = normMc(mc);
+    var url = C411_URL + encodeURIComponent(docketFromMc(mc));
+    function settle(incoming) {
+      storeC411Incoming(mc, incoming, startedAt);
+      stopC411Heartbeat(mc);
+      clearOwnClaim(mc);
+      return getC411Cached(mc) || incoming;
+    }
+    return gmGetHtml(url, {
+      onLate: function (html) {
+        acceptLateC411Html(mc, html, startedAt);
       }
-      return getC411Cached(mc) || parsed;
-    });
+    }).then(
+      function (html) {
+        if (isC411Challenge(html)) return settle({ ok: false, hasFg: false, error: true, challenge: true });
+        var parsed = parseC411HtmlToFg(html);
+        if (!parsed || typeof parsed !== 'object') return settle({ ok: false, hasFg: false, error: true });
+        return settle(parsed);
+      },
+      function (err) {
+        return settle(c411FailureRecord(err));
+      }
+    );
+  }
+  var c411Active = 0;
+  var c411Wait = [];
+  function pumpC411() {
+    if (c411Active < 2 && c411Wait.length) c411Wait.shift()();
   }
   function lookupC411(mc, force) {
-    if (force) {
-      forgetC411Cached(mc);
-      delete c411Inflight[mc];
-    }
-    var cached = getC411Cached(mc);
-    if (cached) return Promise.resolve(cached);
+    mc = normMc(mc);
+    if (!mc) return Promise.resolve({ ok: false, hasFg: false, error: true });
     if (c411Inflight[mc]) return c411Inflight[mc];
-    c411Inflight[mc] = fetchC411Direct(mc)
-      .catch(function (err) {
-        var msg = String((err && err.message) || err || '');
-        if (msg === '429' || msg === 'timeout' || msg === 'network' || msg.indexOf('HTTP') === 0) {
-          return { ok: false, hasFg: false, error: true };
+    if (!force) {
+      var cached = getC411Cached(mc);
+      if (cached) return Promise.resolve(cached);
+    }
+    var slot = {};
+    slot.p = new Promise(function (resolve) {
+      var finished = false;
+      function finish(fg) {
+        if (finished) return;
+        finished = true;
+        if (c411Inflight[mc] === slot.p) delete c411Inflight[mc];
+        resolve(fg || { ok: false, hasFg: false, error: true });
+        pumpC411();
+      }
+      function startOwnedFetch() {
+        if (finished) return;
+        if (c411Active >= 2) {
+          c411Wait.push(startOwnedFetch);
+          return;
         }
-        return { ok: false, hasFg: false, login: true };
-      })
-      .then(function (fg) {
-        delete c411Inflight[mc];
-        return fg || { ok: false, hasFg: false, login: true };
-      });
-    return c411Inflight[mc];
+        if (!writeOwnClaim(mc)) {
+          decide(true);
+          return;
+        }
+        startC411Heartbeat(mc);
+        c411Active += 1;
+        var startedAt = Date.now();
+        fetchC411Direct(mc, startedAt)
+          .then(function (fg) {
+            c411Active -= 1;
+            finish(fg);
+          })
+          .catch(function () {
+            c411Active -= 1;
+            stopC411Heartbeat(mc);
+            clearOwnClaim(mc);
+            finish(getC411Cached(mc) || { ok: false, hasFg: false, error: true });
+          });
+      }
+      function afterWait(out) {
+        if (finished) return;
+        if (out && out.kind === 'result' && out.hit) {
+          finish(out.hit);
+          return;
+        }
+        var hit = getC411Cached(mc);
+        if (hit && !force) {
+          finish(hit);
+          return;
+        }
+        startOwnedFetch();
+      }
+      function decide(delayedAlready) {
+        if (finished) return;
+        if (!force) {
+          var cachedHit = getC411Cached(mc);
+          if (cachedHit) {
+            finish(cachedHit);
+            return;
+          }
+        }
+        var claim = claimFor(mc);
+        if (c411ShouldWaitForClaim(claim, Date.now(), c411OwnerId)) {
+          waitForC411Settle(mc, claim.t).then(afterWait);
+          return;
+        }
+        if (!delayedAlready) {
+          var focused = true;
+          try {
+            focused = document.hasFocus();
+          } catch (eFocus) {}
+          if (!focused) {
+            setTimeout(function () {
+              decide(true);
+            }, c411OtherWindowDelay(Math.random()));
+            return;
+          }
+        }
+        startOwnedFetch();
+      }
+      decide(false);
+    });
+    c411Inflight[mc] = slot.p;
+    return slot.p;
   }
 
   function startC411PageHint() {
-    function cacheLiveDocket() {
+    function readC411PageSession() {
       try {
+        var html = document.documentElement.innerHTML || '';
+        if (isC411Challenge(html)) return;
+        if (c411HtmlLoggedOut(html)) {
+          setSessionC411(false);
+          return;
+        }
+        if (c411HtmlLooksLoggedIn(html)) setSessionC411(true);
         var m = String(location.search || '').match(/docket=MC0*(\d+)/i);
         if (!m) return;
         var liveMc = String(Number(m[1]));
-        var live = parseC411HtmlToFg(document.documentElement.innerHTML || '');
-        if (!live.login) {
-          setSessionC411(true);
-          setC411Cached(liveMc, live);
-        }
+        var live = parseC411HtmlToFg(html);
+        if (live.login) return;
+        setC411Cached(liveMc, live);
       } catch (e) {}
     }
-    cacheLiveDocket();
-    window.addEventListener('pageshow', cacheLiveDocket);
+    readC411PageSession();
+    window.addEventListener('pageshow', readC411PageSession);
     document.addEventListener('visibilitychange', function () {
-      if (!document.hidden) cacheLiveDocket();
+      if (!document.hidden) readC411PageSession();
+    });
+  }
+  function startHwyPageHint() {
+    function readHwyPageSession() {
+      try {
+        var href = String(location.href || '');
+        if (/\/broker\/login|\/users\/sign_in|\/onboarding\/sign-/i.test(href)) {
+          setSessionHwy(false);
+          return;
+        }
+        if (/\/broker\//i.test(href)) setSessionHwy(true);
+      } catch (e) {}
+    }
+    readHwyPageSession();
+    window.addEventListener('pageshow', readHwyPageSession);
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) readHwyPageSession();
     });
   }
 
@@ -2523,7 +3166,7 @@
         return result;
       })
       .catch(function (err) {
-        if (err && err.code === 'login') setSessionHwy(false);
+        if (err && err.code === 'login' && err.sure) setSessionHwy(false);
         result.vehiclesFailed = true;
         delete hwyVehiclesInflight[mc];
         return result;
@@ -2593,7 +3236,7 @@
       })
       .catch(function (err) {
         var login = !!(err && err.code === 'login');
-        if (login) setSessionHwy(false);
+        if (login && err.sure) setSessionHwy(false);
         return {
           name: null,
           assessment: login ? 'Sign in' : 'Lookup failed',
@@ -2638,10 +3281,7 @@
         });
       }
       if (hwyActive < 2) start();
-      else {
-        if (hwyWait.length > 6) hwyWait.shift();
-        hwyWait.push(start);
-      }
+      else hwyWait.push(start);
     });
     return inflight[mc];
   }
@@ -2688,20 +3328,33 @@
     } catch (e) {}
     return false;
   }
+  function tipPlain(text) {
+    if (text && typeof text === 'object') return String(text.plain || '');
+    return String(text || '');
+  }
   function showFastTip(anchor, text, delay, force) {
-    if (!text || !anchor) return;
-    if (fastTipAnchor === anchor && fastTipEl && fastTipEl.textContent === text) return;
+    var plain = tipPlain(text);
+    var lines = text && typeof text === 'object' && text.lines ? text.lines : null;
+    if ((!plain && !(lines && lines.length)) || !anchor) return;
+    if (fastTipAnchor === anchor && fastTipEl && fastTipEl.getAttribute('data-ss-tip') === plain) return;
     hideFastTip();
     fastTipAnchor = anchor;
     var wait = delay == null ? 0 : delay;
     function place() {
       fastTipTimer = 0;
       if (!anchor || !anchor.isConnected) return;
-      if (!force && !tipAnchorStillHot(anchor)) return;
+      if (!force && wait > 0 && !tipAnchorStillHot(anchor)) return;
       var r = anchor.getBoundingClientRect();
       if (!r.width || !r.height) return;
       if (fastTipEl && fastTipEl.parentNode) fastTipEl.parentNode.removeChild(fastTipEl);
-      fastTipEl = el('div', 'ss-fast-tip', text);
+      fastTipEl = el('div', 'ss-fast-tip');
+      fastTipEl.setAttribute('data-ss-tip', plain);
+      if (lines && lines.length) {
+        var li;
+        for (li = 0; li < lines.length; li++) {
+          fastTipEl.appendChild(el('div', lines[li].hi ? 'ss-tip-hwy' : '', lines[li].text || ''));
+        }
+      } else fastTipEl.textContent = plain;
       (document.documentElement || document.body).appendChild(fastTipEl);
       var tw = fastTipEl.offsetWidth || 200;
       var th = fastTipEl.offsetHeight || 40;
@@ -2954,15 +3607,67 @@
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, '');
   }
+  var PLATE_STOP = {
+    IS: 1, AM: 1, PM: 1, AT: 1, TO: 1, OF: 1, ON: 1, NO: 1, BE: 1, AS: 1, BY: 1, UP: 1,
+    IT: 1, IF: 1, SO: 1, AN: 1, MY: 1, ME: 1, WE: 1, HE: 1, DO: 1, GO: 1, THE: 1, AND: 1,
+    FOR: 1, ARE: 1, WAS: 1, HAS: 1, HAD: 1, NOT: 1, BUT: 1, OUT: 1, ETA: 1, APT: 1, PO: 1,
+    ST: 1, RD: 1, AVE: 1, HWY: 1, MI: 1, HR: 1, HRS: 1, MIN: 1, MINS: 1, MILE: 1, MILES: 1,
+    EMPTY: 1, LOAD: 1, LOADED: 1, AWAY: 1, FROM: 1, WITH: 1, THIS: 1, THAT: 1, UNIT: 1,
+    UNITS: 1, TRUCK: 1, TRUCKS: 1, TRAILER: 1, TRAILERS: 1, PLATE: 1, PLATES: 1, TAG: 1,
+    TAGS: 1, LATE: 1, LEFT: 1, LIVE: 1, DISPATCH: 1, DRIVER: 1, PHONE: 1, EMAIL: 1
+  };
+  function plateLetterPrefix(p) {
+    var m = String(p || '').match(/^([A-Z]+)/);
+    return m ? m[1] : '';
+  }
+  function plateLetterSuffix(p) {
+    var m = String(p || '').match(/([A-Z]+)$/);
+    return m ? m[1] : '';
+  }
+  var PLATE_UNITS = {
+    LB: 1, LBS: 1, KG: 1, KGS: 1, FT: 1, IN: 1, MI: 1, HR: 1, HRS: 1, MPH: 1,
+    TON: 1, TONS: 1, PCS: 1, DEG: 1, GAL: 1, OZ: 1, CM: 1, MM: 1, KM: 1, F: 1, C: 1
+  };
+  function plateLooksLikeMeasure(text, start, end, tok) {
+    var p = normPlateToken(tok);
+    var suf = plateLetterSuffix(p);
+    if (suf && (PLATE_UNITS[suf] || PLATE_STOP[suf])) return true;
+    var rest = String(text || '')
+      .slice(end, end + 20)
+      .toUpperCase();
+    if (
+      /^\s*(LBS?|#|POUNDS?|KGS?|KILOS?|FEET|FT\b|INCH(?:ES)?|IN\b|MILES?|MI\b|KMS?|HOURS?|HRS?\b|MINS?\b|MINUTES?|AWAY|OUT\b|EMPTY|LOADED|LATE|PALLETS?|SKIDS?|CASES?|PIECES?|MPH|DEGREES?)\b/.test(
+        rest
+      )
+    ) {
+      return true;
+    }
+    var left = String(text || '')
+      .slice(Math.max(0, start - 14), start)
+      .toUpperCase();
+    if (/\$\s*$/.test(left) || /\b(?:RATE|RPM|PAY|WEIGHT|WT|LBS?|POUNDS?)\s*$/.test(left)) return true;
+    return false;
+  }
   function looksLikePlateToken(tok, plateWordCue) {
     var p = normPlateToken(tok);
-    if (p.length < 4 || p.length > 8) return false;
+    if (p.length < 5 || p.length > 8) return false;
     if (/^(MC|DOT|US|USDOT)[0-9]+$/.test(p)) return false;
-    if (/^(PLATE|PLATES|PLT|PLTS|TAG|TAGS|TRUCK|TRUCKS|TRAILER|TRAILERS|TRLR|TRLRS|TRL|LP)$/.test(p)) {
-      return false;
+    if (/^[0-9]{2,3}X[0-9]{2,3}$/.test(p)) return false;
+    if (/^X[0-9]+$/.test(p) || /^[0-9]+X$/.test(p)) return false;
+    if (PLATE_STOP[p]) return false;
+    var prefix = plateLetterPrefix(p);
+    var suffix = plateLetterSuffix(p);
+    var digits = (p.match(/[0-9]/g) || []).length;
+    var letters = (p.match(/[A-Z]/g) || []).length;
+    if (suffix && (PLATE_UNITS[suffix] || PLATE_STOP[suffix])) return false;
+    if (prefix && PLATE_STOP[prefix] && digits === p.length - prefix.length) return false;
+    if (!plateWordCue && prefix && USPS_ST[prefix] && letters === 2 && digits === 5) return false;
+    if (!plateWordCue && p.length < 6) return false;
+    if (letters && digits) {
+      if (digits < 2) return false;
+      return true;
     }
-    if (/[A-Z]/.test(p) && /[0-9]/.test(p)) return true;
-    if (plateWordCue && /^[0-9]{4,8}$/.test(p)) return true;
+    if (plateWordCue && /^[0-9]{5,8}$/.test(p)) return true;
     return false;
   }
   function pushUniqStr(arr, v) {
@@ -3001,39 +3706,37 @@
       var vi;
       for (vi = m.index; vi < m.index + m[0].length; vi++) used[vi] = true;
     }
-    var cueRe =
-      /\b(?:LICENSE\s*PLATES?|LIC\s*PLATES?|PLATES?|PLTS?|TAGS?|LP|TRUCKS?|TRACTORS?|TRAILERS?|TRLRS?|TRL|POWER\s*UNITS?)\b/g;
-    var cues = [];
-    while ((m = cueRe.exec(upper))) {
-      cues.push({
-        start: m.index,
-        end: m.index + m[0].length,
-        plateWord: /PLATE|PLT|TAG|\bLP\b|LICENSE/.test(m[0])
-      });
+    function addPlateHit(cand, abs, rawLen, plateWordCue) {
+      if (used[abs]) return;
+      if (!looksLikePlateToken(cand, plateWordCue)) return;
+      if (plateLooksLikeMeasure(upper, abs, abs + rawLen, cand)) return;
+      var np = normPlateToken(cand);
+      var k;
+      for (k = abs; k < abs + rawLen; k++) used[k] = true;
+      var left = upper.slice(Math.max(0, abs - 36), abs);
+      var kind = plateKindFromLeft(left);
+      if (kind === 'truck') pushUniqStr(truckPlates, np);
+      else if (kind === 'trailer') pushUniqStr(trailerPlates, np);
+      else pushUniqStr(unlabeledPlates, np);
     }
-    var ci;
-    for (ci = 0; ci < cues.length; ci++) {
-      var cue = cues[ci];
-      var from = Math.max(0, cue.start - 12);
-      var to = Math.min(upper.length, cue.end + 48);
+    function scanWindow(from, to, plateWordCue) {
       var window = upper.slice(from, to);
       var localRe =
-        /\b([A-Z]{1,4}[\- ]?[0-9]{2,6}[A-Z]{0,3}|[0-9]{1,3}[A-Z]{1,4}[0-9]{1,4}|[A-Z][A-Z0-9]{3,7}|[0-9]{4,8})\b/g;
+        /\b([0-9]{1,3}[A-Z]{2,4}[0-9]{1,4}|[A-Z]{1,3}[\- ]?[0-9]{3,6}[A-Z]{0,2}|[A-Z]{3,4}[0-9]{2,4}|[0-9]{3,6}[\- ]?[A-Z]{1,3}|[0-9]{5,8})\b/g;
       var pm;
       while ((pm = localRe.exec(window))) {
-        var abs = from + pm.index;
-        if (used[abs]) continue;
-        var cand = pm[1] || pm[0];
-        if (!looksLikePlateToken(cand, cue.plateWord)) continue;
-        var np = normPlateToken(cand);
-        var k;
-        for (k = abs; k < abs + pm[0].length; k++) used[k] = true;
-        var left = upper.slice(Math.max(0, abs - 36), abs);
-        var kind = plateKindFromLeft(left);
-        if (kind === 'truck') pushUniqStr(truckPlates, np);
-        else if (kind === 'trailer') pushUniqStr(trailerPlates, np);
-        else pushUniqStr(unlabeledPlates, np);
+        addPlateHit(pm[1] || pm[0], from + pm.index, pm[0].length, plateWordCue);
       }
+    }
+    var cueRe =
+      /\b(?:LICENSE\s*PLATES?|LIC(?:ENSE)?\s*PLATES?|PLATES?|PLTS?|TAGS?|L\/P|\bLP\b)(?:\s*(?:#|NO\.?|NUM(?:BER)?)?)?:?/g;
+    while ((m = cueRe.exec(upper))) {
+      scanWindow(Math.max(0, m.index - 14), Math.min(upper.length, m.index + m[0].length + 24), true);
+    }
+    var strongRe =
+      /\b([0-9]{1,3}[A-Z]{3}[0-9]{1,3}|[A-Z]{1,3}[-\s]?[0-9]{4,6}[A-Z]{0,2}|[0-9]{4,6}[-\s]?[A-Z]{1,3})\b/g;
+    while ((m = strongRe.exec(upper))) {
+      addPlateHit(m[1] || m[0], m.index, m[0].length, false);
     }
     return {
       truckPlates: truckPlates,
@@ -3141,7 +3844,7 @@
       return;
     }
     if (!state.hwy) {
-      addPill(hwyHit, 'hwy-mc-wait', '…', 'Looking up Highway. Click the Highway icon to retry.');
+      addPill(hwyHit, 'hwy-mc-wait', 'Loading', 'Looking up Highway. Click the Highway icon to retry.');
       return;
     }
     var found = { any: false };
@@ -3198,7 +3901,7 @@
         if (gp) addPill(hwyHit, gp.cls, gp.text, gp.title);
       } else if (id === 'connection') {
         if (connKind(state.hwy.connStatus) === 'connected') {
-          addPill(hwyHit, 'hwy-mc-conn', 'Connected', 'Connected with this carrier on Highway');
+          addPill(hwyHit, 'hwy-mc-pass', 'Connected', 'Connected with this carrier on Highway');
         } else {
           addPill(
             hwyHit,
@@ -3236,18 +3939,19 @@
 
   function paintC411Pills(c411Hit, state, mc, compact) {
     c411Hit.appendChild(logoImg(C411_LOGO, 'Carrier411'));
-    if (!state.fg) {
-      addPill(c411Hit, 'hwy-mc-wait', '…', 'Looking up Carrier411');
-      return;
-    }
-    if (state.fg.login) {
+    if ((sessionC411 === false && (!state.fg || state.fg.login || state.fg.error)) || (state.fg && state.fg.login)) {
       addPill(c411Hit, 'hwy-mc-wait', 'Login', 'Login to Carrier411');
       var loginLogo = c411Hit.querySelector('.hwy-mc-logo');
       if (loginLogo) bindHoverTip(loginLogo, 'Login to Carrier411');
       return;
     }
+    if (!state.fg) {
+      addPill(c411Hit, 'hwy-mc-wait', 'Loading', 'Looking up Carrier411');
+      armC411PaintWatch();
+      return;
+    }
     if (state.fg.error) {
-      addPill(c411Hit, 'hwy-mc-wait', '…', 'Carrier411 lookup did not finish. Click the Carrier411 icon to retry.');
+      addPill(c411Hit, 'hwy-mc-wait', 'Retry', 'Carrier411 lookup did not finish. Click the Carrier411 icon to retry.');
       return;
     }
     var order = loadSettings().c411;
@@ -3263,7 +3967,7 @@
             c411Hit,
             'hwy-mc-fail',
             txt,
-            (state.fg.type || 'FreightGuard') + (state.fg.count > 1 ? ' (' + state.fg.count + ')' : '')
+            fgTipText(state.fg)
           );
         } else {
           addPill(c411Hit, 'hwy-mc-partial', 'No FG', 'No FreightGuard reports');
@@ -3300,11 +4004,15 @@
   var mcStore = {};
   function uiMode() {
     var s = loadSettings();
-    return s.ui === 'bar' || s.ui === 'inline' ? s.ui : 'both';
+    return c411UiChoice(s && s.ui);
   }
   function inQuoted(node) {
     var el = node && node.nodeType === 3 ? node.parentElement : node;
-    return !!(el && el.closest && el.closest('.gmail_quote, .gmail_extra, .gmail_attr, blockquote.gmail_quote'));
+    return !!(
+      el &&
+      el.closest &&
+      el.closest('.gmail_quote, .gmail_extra, .gmail_attr, blockquote.gmail_quote, .adL')
+    );
   }
   function isShown(el) {
     if (!el || !el.getBoundingClientRect) return false;
@@ -3462,11 +4170,7 @@
   }
   function messageFromAddr(msg) {
     if (!msg || !msg.querySelector) return '';
-    var em =
-      msg.querySelector('.gE span.gD[email]') ||
-      msg.querySelector('span.gD[email]') ||
-      msg.querySelector('span[email].g2') ||
-      msg.querySelector('[email].gD');
+    var em = msg.querySelector('.gE span.gD[email], span.gD[email], span[email].g2, [email].gD');
     if (em) {
       var v = em.getAttribute('email') || em.getAttribute('data-hovercard-id') || '';
       if (v.indexOf('@') >= 0) return v;
@@ -3503,13 +4207,13 @@
     var text = '';
     if (unquotedOnly && box.querySelector) {
       var walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT, null);
-      while (walker.nextNode()) {
+      while (text.length < 8000 && walker.nextNode()) {
         var p = walker.currentNode.parentElement;
         if (p && p.closest && p.closest('.gmail_quote, .gmail_extra, .gmail_attr')) continue;
         text += walker.currentNode.nodeValue + ' ';
       }
     } else {
-      text = String(box.innerText || box.textContent || '');
+      text = textCap(box, 8000);
     }
     var plain = text.match(/[a-z0-9._%+\-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) || [];
     for (i = 0; i < plain.length; i++) add(plain[i]);
@@ -3585,6 +4289,9 @@
       if (!st.fg || st.fg.login || st.fg.error) {
         st._gotFg = false;
         st.fg = null;
+        try {
+          notifyMc(mc);
+        } catch (eLoad) {}
         ensureMc(mc);
       }
       var url = C411_URL + encodeURIComponent(docketFromMc(mc));
@@ -3722,6 +4429,33 @@
   function dropNode(n) {
     if (n && n.parentNode) n.parentNode.removeChild(n);
   }
+  function clearIntel(root) {
+    var host = root && root.querySelectorAll ? root : document;
+    host.querySelectorAll('.ss-intel-msg').forEach(dropNode);
+    host.querySelectorAll('tr.ss-intel-tr, .ss-intel-host').forEach(dropNode);
+  }
+  function textCap(node, max) {
+    max = max || 2500;
+    if (!node) return '';
+    var t = '';
+    function walk(n) {
+      if (!n || t.length >= max) return;
+      if (n.nodeType === 3) {
+        if (n.nodeValue) t += n.nodeValue;
+        return;
+      }
+      if (n.nodeType !== 1) return;
+      var cls = n.className ? String(n.className) : '';
+      if (/gmail_quote|gmail_extra|gmail_attr|hwy-mc-wrap|ss-rate-wrap|ss-intel/.test(cls)) return;
+      var tag = n.tagName;
+      if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA' || tag === 'INPUT') return;
+      var kids = n.childNodes;
+      var i;
+      for (i = 0; i < kids.length; i++) walk(kids[i]);
+    }
+    walk(node);
+    return t.length > max ? t.slice(0, max) : t;
+  }
   function isExpandedMsg(msg) {
     if (!msg || !msg.querySelector) return false;
     var body = msg.querySelector('div.a3s, div.ii.gt');
@@ -3749,16 +4483,27 @@
     if (list.length) return [list[list.length - 1]];
     return out;
   }
+  function clampMsgDepth(n) {
+    n = Math.round(Number(n));
+    if (!isFinite(n)) return 20;
+    if (n < 10) return 10;
+    if (n > 80) return 80;
+    return n;
+  }
+  function messageWindowDepth() {
+    var s = loadSettings();
+    return clampMsgDepth(s && s.msgDepth);
+  }
   function threadMessageNodes(root) {
     if (!root || !root.querySelectorAll) return [];
     var list = root.querySelectorAll('.h7, div.kv');
     var n = list.length;
-    var start = n > 80 ? n - 80 : 0;
+    var depth = messageWindowDepth();
+    var start = n > depth ? n - depth : 0;
     var out = [];
-    var i;
-    for (i = start; i < n; i++) {
-      var msg = list[i];
-      if (inInboxList(msg)) continue;
+    function consider(msg) {
+      if (!msg || out.indexOf(msg) >= 0) return;
+      if (inInboxList(msg)) return;
       if (msg.classList && msg.classList.contains('kv')) {
         if (
           !(
@@ -3766,11 +4511,16 @@
             (msg.querySelector('.iA.g6') || msg.querySelector('[email], span.gD'))
           )
         ) {
-          continue;
+          return;
         }
       }
       out.push(msg);
     }
+    var i;
+    for (i = 0; i < start; i++) {
+      if (isExpandedMsg(list[i])) consider(list[i]);
+    }
+    for (i = start; i < n; i++) consider(list[i]);
     return out;
   }
   function msgInViewport(msg) {
@@ -3803,11 +4553,12 @@
   }
   function collapsedSnippetText(msg) {
     var snip = collapsedSnippetBox(msg);
-    var t = '';
+    if (!snip) return '';
     try {
-      t = String((snip && snip.textContent) || (msg && msg.textContent) || '').slice(0, 2500);
-    } catch (eSnip) {}
-    return t;
+      return textCap(snip, 1200);
+    } catch (eSnip) {
+      return '';
+    }
   }
   function collapsedHasMc(msg) {
     if (!msg || isExpandedMsg(msg)) return false;
@@ -3866,30 +4617,29 @@
     } catch (e2) {}
     idleHandle = 0;
   }
-  function enqueueIdleMsg(msg) {
+  function enqueueIdleMsg(msg, front) {
     if (!msg || !msg.isConnected) return;
-    if (msg.getAttribute && msg.getAttribute('data-ss-scanned') === '1') return;
+    if (!front && msg.getAttribute && msg.getAttribute('data-ss-scanned') === '1') return;
     if (idleQueue.indexOf(msg) >= 0) return;
-    idleQueue.push(msg);
+    if (front) idleQueue.unshift(msg);
+    else idleQueue.push(msg);
     scheduleIdleDrain();
   }
   function scheduleIdleDrain() {
-    if (isPaused() || idleHandle || !idleQueue.length) return;
-    var kick = function () {
+    if (isPaused() || idleHandle || !idleQueue.length || document.hidden) return;
+    idleHandle = setTimeout(function () {
       idleHandle = 0;
       drainIdleScan();
-    };
-    if (typeof requestIdleCallback === 'function') {
-      idleHandle = requestIdleCallback(kick, { timeout: 800 });
-    } else {
-      idleHandle = setTimeout(kick, 200);
-    }
+    }, 320);
   }
+  var idlePaintBatch = 0;
   function drainIdleScan() {
     if (isPaused()) {
       idleQueue = [];
+      idlePaintBatch = 0;
       return;
     }
+    if (document.hidden) return;
     if (scanning) {
       scheduleIdleDrain();
       return;
@@ -3898,17 +4648,28 @@
     while (idleQueue.length && !msg) {
       msg = idleQueue.shift();
       if (!msg || !msg.isConnected) msg = null;
+      else if (msg.getAttribute && msg.getAttribute('data-ss-scanned') === '1') msg = null;
     }
-    if (!msg) return;
+    if (!msg) {
+      if (idlePaintBatch) {
+        idlePaintBatch = 0;
+        applyUiMode();
+      }
+      return;
+    }
     scanning = true;
     try {
       obs.disconnect();
       processOneMessage(msg);
-      applyUiMode();
     } catch (eIdle) {
     } finally {
       scanning = false;
       armObserver();
+    }
+    idlePaintBatch++;
+    if (!idleQueue.length || idlePaintBatch >= 3) {
+      idlePaintBatch = 0;
+      applyUiMode();
     }
     if (idleQueue.length) scheduleIdleDrain();
   }
@@ -3942,6 +4703,7 @@
       processScope(q);
       wrapRatesInScope(q);
     }
+    if (msg.setAttribute) msg.setAttribute('data-ss-scanned', '1');
   }
   function headerColCount(acz) {
     if (!acz) return 4;
@@ -3982,10 +4744,11 @@
       var host = tr.firstChild;
       try {
         var winW = window.innerWidth || 0;
+        var prevW = Number(host && host.getAttribute('data-ss-w')) || 0;
         var needPad =
           host &&
           host.style &&
-          (host.getAttribute('data-ss-w') !== String(winW) || !host.style.getPropertyValue('--ss-time-pad'));
+          (!host.style.getPropertyValue('--ss-time-pad') || Math.abs(winW - prevW) > 24);
         if (needPad) {
           var alignEl =
             (acz &&
@@ -4465,6 +5228,15 @@
       ev.preventDefault();
       ev.stopPropagation();
       markC411Clicked(mc);
+      var fgSt = mcStore[mc];
+      if (fgSt && (!fgSt.fg || fgSt.fg.login || fgSt.fg.error)) {
+        fgSt._gotFg = false;
+        fgSt.fg = null;
+        try {
+          notifyMc(mc);
+        } catch (eLoad) {}
+        ensureMc(mc);
+      }
       window.open(C411_URL + encodeURIComponent(docketFromMc(mc)), '_blank', 'noopener,noreferrer');
     });
     paintC411Pills(c411Hit, st, mc, false);
@@ -4508,8 +5280,10 @@
       hwy.bipdAmt == null ? '' : hwy.bipdAmt,
       hwy.glAmt == null ? '' : hwy.glAmt,
       (hwy.emails || []).length,
+      st.fg ? '1' : '0',
       fg.hasFg ? '1' : '0',
       fg.date || '',
+      fg.type || '',
       fg.login ? '1' : '0',
       fg.error ? '1' : '0',
       (found.truckPlates || []).join(','),
@@ -4519,8 +5293,17 @@
       rateAmt == null ? '' : String(rateAmt)
     ].join('\t');
   }
+  function hydrateFgFromCache(mc) {
+    var st = mcStore[mc];
+    if (!st || (st.fg && !st.fg.error && !st.fg.login)) return;
+    var hit = getC411Cached(mc);
+    if (!hit || hit.login || hit.error) return;
+    st.fg = hit;
+  }
   function fillMsgBar(bar, msg, mcs, rateAmt) {
     mcs = uniqMcs(mcs);
+    var hi;
+    for (hi = 0; hi < mcs.length; hi++) hydrateFgFromCache(mcs[hi]);
     var sig = mcs
       .map(function (mc) {
         return cardStateSig(mc, msg, rateAmt);
@@ -4540,8 +5323,7 @@
     dropNode(document.getElementById('ss-intel-bar'));
     var root = openThreadRoot();
     if (uiMode() === 'inline' || !root) {
-      document.querySelectorAll('.ss-intel-msg').forEach(dropNode);
-      document.querySelectorAll('tr.ss-intel-tr, .ss-intel-host').forEach(dropNode);
+      clearIntel(document);
       return;
     }
     var msgs = threadScanMessages(root);
@@ -4613,7 +5395,7 @@
     return false;
   }
 
-  var SKIP_WALK = /gmail_quote|gmail_extra|gmail_attr/;
+  var SKIP_WALK = /gmail_quote|gmail_extra|gmail_attr|(?:^|\s)adL(?:\s|$)/;
   function collectTextNodes(root) {
     var all = [];
     function walk(node, isRoot) {
@@ -4756,11 +5538,40 @@
   function rateAfterIsUnit(text, end) {
     return /^\s*(?:lbs?|pounds?|kgs?|kilos?|mi(?:les?)?|kms?)\b/i.test(String(text || '').slice(end));
   }
+  function rateContextReject(text, start, end) {
+    var pre = String(text || '')
+      .slice(Math.max(0, start - 70), start)
+      .replace(/\s+/g, ' ');
+    var post = String(text || '')
+      .slice(end, end + 36)
+      .replace(/\s+/g, ' ');
+    if (/\b(?:trailer|cargo|equipment|declared|insured|unit|load)?\s*value\s*(?:is|of|:|=)?\s*$/i.test(pre)) {
+      return true;
+    }
+    if (/\b(?:worth|valued\s+at)\s*$/i.test(pre)) return true;
+    if (/\b(?:insurance|insured|coverage|deductible|bipd|motor\s+truck\s+cargo)\b\s*$/i.test(pre)) return true;
+    if (/^\s*(?:coverage|deductible|insurance|liability|limit)\b/i.test(post)) return true;
+    return false;
+  }
+  function parseDollarBody(body) {
+    var t = String(body || '')
+      .replace(/\s+/g, '')
+      .replace(/^\$/, '')
+      .replace(/\$$/, '');
+    if (/^\d{1,3}(\.\d{3})+$/.test(t)) return parseRateNum(t.replace(/\./g, ''), false);
+    if (/^\d{1,3}(,\d{3})+(?:\.\d{1,2})?$/.test(t)) {
+      return parseRateNum(t.replace(/,/g, '').replace(/\.\d{1,2}$/, ''), false);
+    }
+    var cents = t.match(/^(\d{3,8})\.(\d{1,2})$/);
+    if (cents) return parseRateNum(cents[1], false);
+    if (/^\d{3,8}$/.test(t)) return parseRateNum(t, false);
+    return null;
+  }
   function findRateMatches(text) {
     var s = String(text || '');
     var out = [];
     function addHit(start, end, full, n) {
-      if (n == null || rateAfterIsUnit(s, end)) return;
+      if (n == null || rateAfterIsUnit(s, end) || rateContextReject(s, start, end)) return;
       var i;
       for (i = 0; i < out.length; i++) {
         if (!(end <= out[i].start || start >= out[i].end)) return;
@@ -4768,11 +5579,11 @@
       out.push({ start: start, end: end, full: full, n: n });
     }
     var dollarRe =
-      /\$\s*([0-9]{1,2}(?:,[0-9]{3})+|[1-9][0-9]{2,4})(?:\.\d{1,2})?|([0-9]{1,2}(?:,[0-9]{3})+|[1-9][0-9]{2,4})(?:\.\d{1,2})?\s*\$/g;
+      /\$\s*(\d{1,3}(?:[.,]\d{3})+|\d{3,8})(?:\.\d{1,2})?|(\d{1,3}(?:[.,]\d{3})+|\d{3,8})(?:\.\d{1,2})?\s*\$/g;
     var kRe = /\$?\s*([1-9]\d?(?:\.\d{1,2})?)\s*[kK](?:\s*\$)?(?![A-Za-z])/g;
     var m;
     while ((m = dollarRe.exec(s))) {
-      addHit(m.index, m.index + m[0].length, m[0], parseRateNum(m[1] || m[2], false));
+      addHit(m.index, m.index + m[0].length, m[0], parseDollarBody(m[0]));
     }
     while ((m = kRe.exec(s))) {
       addHit(m.index, m.index + m[0].length, m[0], parseRateNum(m[1], true));
@@ -4969,25 +5780,35 @@
     }
     return map;
   }
+  function subjectRateAmount() {
+    var h = document.querySelector('h2.hP');
+    if (!h) return null;
+    var hits = findRateMatches(h.textContent || '');
+    return hits.length ? hits[0].n : null;
+  }
   function rateForBarMessage(msg, rateMap) {
+    var own = latestRateInMessage(msg);
     var from = normEmail(messageFromAddr(msg));
-    if (!from) return latestRateInMessage(msg);
-    if (isSelfOrCoworkerAddr(from)) {
+    if (from && isSelfOrCoworkerAddr(from)) {
+      if (own != null) return own;
       var recips = nonTeamRecipients(msg);
       if (recips.length === 1) {
         var k = normEmail(recips[0]);
         if (k && rateMap && rateMap[k] != null) return rateMap[k];
       }
-      return latestRateInMessage(msg);
+      return subjectRateAmount();
     }
-    if (rateMap && rateMap[from] != null) return rateMap[from];
-    return latestRateInMessage(msg);
+    if (own != null) return own;
+    var sub = subjectRateAmount();
+    if (sub != null) return sub;
+    if (from && rateMap && rateMap[from] != null) return rateMap[from];
+    return null;
   }
   function unquotedMessageText(a3s) {
     if (!a3s) return '';
     var t = '';
     function walk(node) {
-      if (!node) return;
+      if (!node || t.length > 16000) return;
       if (node.nodeType === 1) {
         var cls = node.className ? String(node.className) : '';
         if (SKIP_WALK.test(cls) || /(hwy-mc-wrap|ss-rate-wrap|ss-intel-msg)/.test(cls)) return;
@@ -5003,14 +5824,14 @@
   }
   function nearbyAskedMc(a3s) {
     var quoted = a3s.querySelector && a3s.querySelector('.gmail_quote, .gmail_extra');
-    if (quoted && MC_ASK.test(quoted.innerText || '')) return true;
+    if (quoted && MC_ASK.test(textCap(quoted, 1500))) return true;
     var msg = (a3s.closest && (a3s.closest('.h7') || a3s.closest('.adn'))) || null;
     if (!msg) return false;
     var n = msg.previousElementSibling;
     var hops = 0;
     while (n && hops < 8) {
       if (n.querySelector && (/\bh7\b/.test(n.className || '') || /\badn\b/.test(n.className || '') || n.querySelector('div.a3s'))) {
-        return MC_ASK.test((n.innerText || '').slice(0, 2500));
+        return MC_ASK.test(textCap(n, 1500));
       }
       n = n.previousElementSibling;
       hops++;
@@ -5058,17 +5879,13 @@
     }
     var hot = hotMessages(root);
     var i;
-    for (i = 0; i < hot.length; i++) processOneMessage(hot[i]);
+    var nowN = Math.min(hot.length, 2);
+    for (i = 0; i < nowN; i++) processOneMessage(hot[i]);
+    for (i = nowN; i < hot.length; i++) enqueueIdleMsg(hot[i], true);
     var all = threadMessageNodes(root);
     for (i = 0; i < all.length; i++) {
       if (hot.indexOf(all[i]) >= 0) continue;
-      if (isExpandedMsg(all[i])) continue;
-      if (collapsedHasMc(all[i]) || collapsedHasRate(all[i])) processOneMessage(all[i]);
-    }
-    var exp = expandedMessages(root);
-    for (i = 0; i < exp.length; i++) {
-      if (hot.indexOf(exp[i]) >= 0) continue;
-      enqueueIdleMsg(exp[i]);
+      enqueueIdleMsg(all[i]);
     }
   }
 
@@ -5115,8 +5932,7 @@
       }
     } catch (eCo) {}
     dropNode(document.getElementById('ss-intel-bar'));
-    document.querySelectorAll('.ss-intel-msg').forEach(dropNode);
-    document.querySelectorAll('tr.ss-intel-tr, .ss-intel-host').forEach(dropNode);
+    clearIntel(document);
     document.querySelectorAll('mark.ss-eq-hi').forEach(unwrapToText);
     document.querySelectorAll('.ss-rate-wrap').forEach(unwrapToText);
     document.querySelectorAll('.hwy-mc-wrap').forEach(function (w) {
@@ -5204,8 +6020,7 @@
         pruneIdleMc(root);
       } else {
         dropNode(document.getElementById('ss-intel-bar'));
-        document.querySelectorAll('.ss-intel-msg').forEach(dropNode);
-        document.querySelectorAll('tr.ss-intel-tr, .ss-intel-host').forEach(dropNode);
+        clearIntel(document);
         pruneIdleMc(null);
       }
       injectSettingsBtn();
@@ -5258,10 +6073,10 @@
     };
     if (typeof requestIdleCallback === 'function') {
       schedIdle = true;
-      schedHandle = requestIdleCallback(kick, { timeout: 240 });
+      schedHandle = requestIdleCallback(kick, { timeout: 900 });
     } else {
       schedIdle = false;
-      schedHandle = setTimeout(kick, 160);
+      schedHandle = setTimeout(kick, 420);
     }
   }
   function kickScan() {
@@ -5275,7 +6090,7 @@
   }
   function scheduleOpenRetries() {
     if (openRetry) return;
-    var delays = [400, 900, 1600, 2800];
+    var delays = [900, 2200];
     var i = 0;
     function step() {
       if (i >= delays.length) {
@@ -5285,8 +6100,9 @@
       openRetry = setTimeout(function () {
         openRetry = 0;
         if (isPaused()) return;
-        scanNow();
         i += 1;
+        if (!expandedNeedsRescan()) return;
+        schedule();
         step();
       }, delays[i]);
     }
@@ -5300,12 +6116,14 @@
     expandQuiet = setTimeout(function () {
       expandQuiet = 0;
       if (isPaused()) return;
-      schedule();
       var root = openThreadRoot();
       if (!root) return;
       var exp = expandedMessages(root);
       var i;
-      for (i = 0; i < exp.length; i++) enqueueIdleMsg(exp[i]);
+      for (i = 0; i < exp.length; i++) {
+        if (exp[i].removeAttribute) exp[i].removeAttribute('data-ss-scanned');
+        enqueueIdleMsg(exp[i], true);
+      }
     }, 350);
   }
   function clickLooksLikeCollapsedMsg(ev) {
@@ -5563,8 +6381,8 @@
     if (runHost) {
       while (runHost.firstChild) runHost.removeChild(runHost.firstChild);
       [
-        { paused: false, lab: 'On — scan emails and show carrier info' },
-        { paused: true, lab: 'Paused — hide badges and stop scanning' }
+        { paused: false, lab: 'On  -  scan emails and show carrier info' },
+        { paused: true, lab: 'Paused  -  hide badges and stop scanning' }
       ].forEach(function (opt) {
         var row = el('div', 'ss-set-row');
         var box = el('span', 'ss-set-check');
@@ -5587,8 +6405,7 @@
       while (uiHost.firstChild) uiHost.removeChild(uiHost.firstChild);
       [
         { id: 'bar', lab: 'Bar only' },
-        { id: 'inline', lab: 'Next to MC' },
-        { id: 'both', lab: 'Bar + next to MC' }
+        { id: 'inline', lab: 'Next to MC' }
       ].forEach(function (opt) {
         var row = el('div', 'ss-set-row');
         var box = el('span', 'ss-set-check');
@@ -5604,6 +6421,48 @@
         });
         uiHost.appendChild(row);
       });
+      var depthRow = el('div', 'ss-set-depth');
+      depthRow.appendChild(document.createTextNode('Newest messages'));
+      var depthNum = el('span', '', String(clampMsgDepth(s.msgDepth)));
+      depthRow.appendChild(depthNum);
+      uiHost.appendChild(depthRow);
+      var range = document.createElement('input');
+      range.type = 'range';
+      range.className = 'ss-set-range';
+      range.min = '10';
+      range.max = '80';
+      range.step = '1';
+      range.value = String(clampMsgDepth(s.msgDepth));
+      range.setAttribute('aria-label', 'How many of the newest messages to check');
+      function stopDepth(ev) {
+        ev.stopPropagation();
+      }
+      range.addEventListener('mousedown', stopDepth);
+      range.addEventListener('click', stopDepth);
+      range.addEventListener('keydown', stopDepth);
+      var depthTimer = 0;
+      range.addEventListener('input', function (ev) {
+        ev.stopPropagation();
+        var n = clampMsgDepth(range.value);
+        range.value = String(n);
+        depthNum.textContent = String(n);
+        s.msgDepth = n;
+        saveSettings(s);
+        if (depthTimer) clearTimeout(depthTimer);
+        depthTimer = setTimeout(function () {
+          try {
+            kickScan();
+          } catch (eDepth) {}
+        }, 300);
+      });
+      uiHost.appendChild(range);
+      uiHost.appendChild(
+        el(
+          'p',
+          'ss-set-hint',
+          'Checks this many of the newest messages. 10 to 80. A message you open further up the thread is still checked.'
+        )
+      );
     }
   }
   function openPanel() {
@@ -5709,8 +6568,8 @@
         'p',
         '',
         orgNeed
-          ? 'Enter your company MC. This is important. Digits only — no “MC”.'
-          : 'Your company’s MC. We never show Highway/Carrier411 results for this number, so your own authority is not treated as a carrier you are vetting. Digits only — no “MC”.'
+          ? 'Enter your company MC. This is important. Digits only  -  no "MC".'
+          : 'Your company\'s MC. We never show Highway/Carrier411 results for this number, so your own authority is not treated as a carrier you are vetting. Digits only  -  no "MC".'
       )
     );
     var orgRow = el('div', 'ss-org-row');
@@ -6121,7 +6980,7 @@
     btn.setAttribute('role', 'button');
     btn.setAttribute('aria-label', 'Highway and Carrier411 badge settings');
     btn.tabIndex = 0;
-    bindHoverTip(btn, isPaused() ? 'Paused — open settings to resume' : 'Carrier check settings');
+    bindHoverTip(btn, isPaused() ? 'Paused  -  open settings to resume' : 'Carrier check settings');
     var logo = document.createElement('img');
     logo.className = 'ss-set-icon';
     logo.src = SET_LOGO;
@@ -6241,8 +7100,8 @@
     if (n.closest && n.closest('tr.zA')) return false;
     if (n.matches && n.matches('.h7, .adn, div.kv, div.a3s, h2.hP')) return true;
     if (n.querySelector && n.querySelector('.h7, .adn, div.kv, div.a3s, h2.hP')) return true;
-    var s = n.textContent || '';
-    if (s.length > 4000) s = s.slice(0, 4000);
+    if (n.childElementCount > 12) return true;
+    var s = textCap(n, 500);
     return /MC/i.test(s) || /\$\s*\d/.test(s) || /\d(?:\.\d{1,2})?\s*[kK]\b/.test(s);
   }
   function removedNeedsScan(n) {
@@ -6359,6 +7218,7 @@
   }
   function start() {
     if (/highway\.com$/i.test(location.hostname) || location.hostname.indexOf('highway.com') >= 0) {
+      startHwyPageHint();
       startHwyCopy();
       return;
     }
@@ -6418,6 +7278,12 @@
     }
     bindCopyFilter();
     resetHwyCacheOnUpdate();
+    try {
+      if (String(GM_getValue(SESSION_C411_KEY, '')) === '1') sessionC411 = true;
+      if (String(GM_getValue(SESSION_C411_KEY, '')) === '0') sessionC411 = false;
+      if (String(GM_getValue(SESSION_HWY_KEY, '')) === '1') sessionHwy = true;
+      if (String(GM_getValue(SESSION_HWY_KEY, '')) === '0') sessionHwy = false;
+    } catch (eSess) {}
     if (!isPaused()) probeSessions();
     window.addEventListener('resize', function () {
       if (isPaused()) return;
@@ -6461,10 +7327,17 @@
         return;
       }
       armObserver();
+      scheduleIdleDrain();
       kickScan();
       probeSessions();
       refreshC411WrapsFromCache();
+      armC411PaintWatch();
       retryClickedC411();
+      if (c411LoginRefreshPending && sessionC411 === true) refreshOpenC411AfterLogin();
+    });
+    window.addEventListener('focus', function () {
+      if (isPaused()) return;
+      probeSessions();
     });
   }
   start();
