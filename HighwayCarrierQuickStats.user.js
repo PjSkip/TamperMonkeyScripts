@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Highway Carrier Quick Stats
 // @namespace    shipsierra.highway
-// @version      2026.41.2.2
+// @version      2026.41.2.3
 // @description  Power units, BASIC score, and Carrier411 on a Highway carrier page. Works on the new layout and the classic view.
 // @author       Ivan Karpenko
 // @homepageURL  https://github.com/PjSkip/TamperMonkeyScripts
@@ -589,9 +589,24 @@
     if (n && el.contains(n)) return el;
     return null;
   }
+  function isMcCopyTarget(node) {
+    var el = node && node.nodeType === 1 ? node : node && node.parentElement;
+    if (!el || !el.closest) return null;
+    if (el.closest('#' + ROOT_ID) || el.closest('h1')) return null;
+    var hit = el.closest('.ss-hwy-mc');
+    if (hit) return hit;
+    var text = oneLine(el.textContent || '');
+    if (/^MC\s*#?\s*\d{3,8}$/i.test(text) && el.getBoundingClientRect && el.getBoundingClientRect().width < 220) return el;
+    return null;
+  }
   function watchNameCopy() {
     if (copyWatchOn) return;
     copyWatchOn = true;
+    document.addEventListener('click', function (ev) {
+      if (!isMcCopyTarget(ev.target)) return;
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+    }, true);
     document.addEventListener('mouseover', function (ev) {
       var el = carrierNameHit(ev.target);
       if (!el) return;
@@ -631,6 +646,15 @@
       if (chip) chip.classList.remove('ss-show');
       return;
     }
+    var oldMcs = document.querySelectorAll('.ss-hwy-mc');
+    var mi;
+    for (mi = 0; mi < oldMcs.length; mi++) {
+      oldMcs[mi].classList.remove('ss-hwy-mc');
+      oldMcs[mi].style.color = '';
+      oldMcs[mi].style.textDecoration = '';
+      oldMcs[mi].style.cursor = '';
+      oldMcs[mi].removeAttribute('title');
+    }
     el.classList.add('ss-hwy-name');
     el.classList.toggle('ss-hwy-name-on-dark', pageIsDark());
     watchNameCopy();
@@ -646,13 +670,13 @@
 
   function injectStyles() {
     var s = document.getElementById(STYLE_ID);
-    if (s && s.getAttribute('data-ss-ver') === '2026.41.2.2') return;
+    if (s && s.getAttribute('data-ss-ver') === '2026.41.2.3') return;
     if (!s) {
       s = document.createElement('style');
       s.id = STYLE_ID;
       document.documentElement.appendChild(s);
     }
-    s.setAttribute('data-ss-ver', '2026.41.2.2');
+    s.setAttribute('data-ss-ver', '2026.41.2.3');
     s.textContent =
       '#' + ROOT_ID + '{position:fixed;z-index:2147483646;display:flex;align-items:stretch;gap:6px;height:40px;pointer-events:none;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}' +
       '#' + ROOT_ID + ' .ss-box,#' + ROOT_ID + ' a.ss-btn{pointer-events:auto;box-sizing:border-box;height:40px;display:flex;flex-direction:column;justify-content:center;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.28);}' +
@@ -672,7 +696,7 @@
       '#' + ROOT_ID + ' .hwy-mc-fail{background:#F8D0D6;color:#9B1B30;border-color:#F0A8B4;}' +
       '#' + ROOT_ID + ' .hwy-mc-partial{background:#D1E7DD;color:#0F5132;border-color:#A3CFBB;}' +
       '#' + ROOT_ID + ' .hwy-mc-wait{background:#EEF2F6;color:#4B5563;border-color:#D0D7DE;}' +
-      'span.ss-hwy-mc,a.ss-hwy-mc{color:inherit !important;text-decoration:none !important;cursor:text !important;font-weight:inherit !important;}' +
+      'span.ss-hwy-mc,a.ss-hwy-mc,.ss-hwy-mc{color:inherit !important;text-decoration:none !important;cursor:text !important;font-weight:inherit !important;pointer-events:auto;}' +
       'h1.ss-hwy-name{color:#3B6EA5 !important;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;cursor:pointer;}' +
       'h1.ss-hwy-name:hover{color:#2F5E90 !important;}' +
       'h1.ss-hwy-name.ss-hwy-name-on-dark{color:#A9C7E8 !important;}' +
