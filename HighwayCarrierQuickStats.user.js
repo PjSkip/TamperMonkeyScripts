@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Highway Carrier Quick Stats
 // @namespace    shipsierra.highway
-// @version      1.5.2
+// @version      1.5.3
 // @description  Power units, BASIC score, and Carrier411 on a Highway carrier page. Works on the new layout and the classic view.
 // @author       Ivan Karpenko
 // @homepageURL  https://github.com/PjSkip/TamperMonkeyScripts
@@ -486,8 +486,9 @@
   }
   function copyText() {
     var name = oneLine(nameEl() && nameEl().innerText) || lastName || '';
-    var mc = normMc(lastMc);
-    var dot = digits(dotNear(boundMc) || lastDot);
+    var mcNode = mcEl();
+    var mc = normMc((mcNode && mcNode.textContent) || lastMc);
+    var dot = digits(dotNear(mcNode) || lastDot);
     var lines = [];
     if (name) lines.push(name);
     if (mc) lines.push('MC ' + (mc.length < 6 ? ('000000' + mc).slice(-6) : mc));
@@ -505,48 +506,137 @@
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text);
     } catch (e2) {}
   }
-  var boundMc = null;
-  var COPY_ID = 'ss-hwy-copyhot';
-  function bindCopy() {
-    var el = mcEl();
-    boundMc = el;
-    var hot = document.getElementById(COPY_ID);
-    if (!el) {
-      if (hot) hot.remove();
-      return;
-    }
-    if (!hot) {
-      hot = document.createElement('div');
-      hot.id = COPY_ID;
-      hot.title = 'Copy carrier name, MC, DOT';
-      hot.addEventListener('click', function (ev) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        var text = copyText();
-        if (!text) return;
-        writeClipboard(text);
-        hot.setAttribute('title', 'Copied');
-        setTimeout(function () {
-          if (hot) hot.setAttribute('title', 'Copy carrier name, MC, DOT');
-        }, 900);
-      });
-      document.documentElement.appendChild(hot);
+  var TIP_ID = 'ss-hwy-copytip';
+  var COPIED_ID = 'ss-hwy-copied';
+  var COPY_ICON =
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+    '<rect x="8" y="7" width="11" height="14" rx="2" stroke="currentColor" stroke-width="1.8"></rect>' +
+    '<path d="M9 7.2V5.6A1.6 1.6 0 0 1 10.6 4h5.2A1.6 1.6 0 0 1 17.4 5.6V7.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>' +
+    '</svg>';
+  var TIP_TEXT = 'Click the carrier name to copy the name, MC, and DOT.';
+  var copyWatchOn = false;
+  var copiedTimer = 0;
+  function pageIsDark() {
+    var bg = '';
+    try { bg = getComputedStyle(document.body).backgroundColor || ''; } catch (e) {}
+    var m = bg.match(/(\d+),\s*(\d+),\s*(\d+)/);
+    if (!m) return false;
+    return (0.299 * Number(m[1]) + 0.587 * Number(m[2]) + 0.114 * Number(m[3])) < 90;
+  }
+  function ensureTip() {
+    var tip = document.getElementById(TIP_ID);
+    if (tip) return tip;
+    tip = document.createElement('div');
+    tip.id = TIP_ID;
+    tip.setAttribute('role', 'tooltip');
+    tip.innerHTML = COPY_ICON + '<span></span>';
+    document.documentElement.appendChild(tip);
+    return tip;
+  }
+  function placeTip(el, message) {
+    var tip = ensureTip();
+    tip.querySelector('span').textContent = message || TIP_TEXT;
+    tip.classList.add('ss-show');
+    var r = el.getBoundingClientRect();
+    var left = Math.max(8, Math.round(r.left));
+    var top = Math.round(r.top - tip.offsetHeight - 8);
+    if (top < 8) top = Math.round(r.bottom + 8);
+    if (left + tip.offsetWidth > window.innerWidth - 8) left = Math.max(8, window.innerWidth - tip.offsetWidth - 8);
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+  }
+  function hideTip() {
+    var tip = document.getElementById(TIP_ID);
+    if (tip) tip.classList.remove('ss-show');
+  }
+  function showCopied(el) {
+    var chip = document.getElementById(COPIED_ID);
+    if (!chip) {
+      chip = document.createElement('div');
+      chip.id = COPIED_ID;
+      chip.innerHTML = '<span aria-hidden="true">\u2713</span> Copied';
+      document.documentElement.appendChild(chip);
     }
     var r = el.getBoundingClientRect();
-    var rgb = '';
-    try { rgb = getComputedStyle(el).color || ''; } catch (e) {}
-    var parts = rgb.match(/(\d+),\s*(\d+),\s*(\d+)/);
-    var luma = parts ? (0.299 * Number(parts[1]) + 0.587 * Number(parts[2]) + 0.114 * Number(parts[3])) : 40;
-    var line = luma > 170 ? '#93c5fd' : '#1d4ed8';
-    hot.style.cssText = 'position:fixed;z-index:2147483646;box-sizing:border-box;cursor:pointer;background:transparent;border-bottom:2px solid ' +
-      line + ';left:' + Math.round(r.left) + 'px;top:' + Math.round(r.top) + 'px;width:' + Math.round(r.width) +
-      'px;height:' + Math.round(r.height) + 'px;';
+    chip.style.left = Math.max(8, Math.round(r.left)) + 'px';
+    chip.style.top = Math.round(r.bottom + 6) + 'px';
+    chip.classList.add('ss-show');
+    clearTimeout(copiedTimer);
+    copiedTimer = setTimeout(function () {
+      if (chip) chip.classList.remove('ss-show');
+    }, 1400);
+  }
+  function carrierNameHit(node) {
+    var el = nameEl();
+    if (!el || !node) return null;
+    var n = node.nodeType === 1 ? node : node.parentElement;
+    if (n && el.contains(n)) return el;
+    return null;
+  }
+  function watchNameCopy() {
+    if (copyWatchOn) return;
+    copyWatchOn = true;
+    document.addEventListener('mouseover', function (ev) {
+      var el = carrierNameHit(ev.target);
+      if (!el) return;
+      placeTip(el, TIP_TEXT);
+    }, true);
+    document.addEventListener('mouseout', function (ev) {
+      var el = carrierNameHit(ev.target);
+      if (!el) return;
+      var next = ev.relatedTarget;
+      if (next && el.contains(next)) return;
+      hideTip();
+    }, true);
+    document.addEventListener('click', function (ev) {
+      var el = carrierNameHit(ev.target);
+      if (!el) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      var text = copyText();
+      if (!text) return;
+      writeClipboard(text);
+      showCopied(el);
+      placeTip(el, 'Copied to clipboard.');
+      setTimeout(function () {
+        var still = nameEl();
+        if (still && still.matches(':hover')) placeTip(still, TIP_TEXT);
+        else hideTip();
+      }, 1400);
+    }, true);
+  }
+  function bindCopy() {
+    var oldHot = document.getElementById('ss-hwy-copyhot');
+    if (oldHot) oldHot.remove();
+    var el = nameEl();
+    if (!el || !onCarrierPage()) {
+      hideTip();
+      var chip = document.getElementById(COPIED_ID);
+      if (chip) chip.classList.remove('ss-show');
+      return;
+    }
+    el.classList.add('ss-hwy-name');
+    el.classList.toggle('ss-hwy-name-on-dark', pageIsDark());
+    watchNameCopy();
+    var tip = document.getElementById(TIP_ID);
+    if (tip && tip.classList.contains('ss-show')) placeTip(el, tip.querySelector('span').textContent);
+    var copied = document.getElementById(COPIED_ID);
+    if (copied && copied.classList.contains('ss-show')) {
+      var r = el.getBoundingClientRect();
+      copied.style.left = Math.max(8, Math.round(r.left)) + 'px';
+      copied.style.top = Math.round(r.bottom + 6) + 'px';
+    }
   }
 
   function injectStyles() {
-    if (document.getElementById(STYLE_ID)) return;
-    var s = document.createElement('style');
-    s.id = STYLE_ID;
+    var s = document.getElementById(STYLE_ID);
+    if (s && s.getAttribute('data-ss-ver') === '1.5.3') return;
+    if (!s) {
+      s = document.createElement('style');
+      s.id = STYLE_ID;
+      document.documentElement.appendChild(s);
+    }
+    s.setAttribute('data-ss-ver', '1.5.3');
     s.textContent =
       '#' + ROOT_ID + '{position:fixed;z-index:2147483646;display:flex;align-items:stretch;gap:6px;height:40px;pointer-events:none;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}' +
       '#' + ROOT_ID + ' .ss-box,#' + ROOT_ID + ' a.ss-btn{pointer-events:auto;box-sizing:border-box;height:40px;display:flex;flex-direction:column;justify-content:center;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.28);}' +
@@ -566,8 +656,15 @@
       '#' + ROOT_ID + ' .hwy-mc-fail{background:#F8D0D6;color:#9B1B30;border-color:#F0A8B4;}' +
       '#' + ROOT_ID + ' .hwy-mc-partial{background:#D1E7DD;color:#0F5132;border-color:#A3CFBB;}' +
       '#' + ROOT_ID + ' .hwy-mc-wait{background:#EEF2F6;color:#4B5563;border-color:#D0D7DE;}' +
-      '.ss-hwy-mc{cursor:pointer !important;text-decoration:underline;text-underline-offset:2px;font-weight:700 !important;}';
-    document.documentElement.appendChild(s);
+      'h1.ss-hwy-name{color:#3B6EA5 !important;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;cursor:pointer;}' +
+      'h1.ss-hwy-name:hover{color:#2F5E90 !important;}' +
+      'h1.ss-hwy-name.ss-hwy-name-on-dark{color:#A9C7E8 !important;}' +
+      'h1.ss-hwy-name.ss-hwy-name-on-dark:hover{color:#C5D9F0 !important;}' +
+      '#' + TIP_ID + '{position:fixed;z-index:2147483646;display:none;align-items:flex-start;gap:8px;max-width:250px;padding:8px 10px;border-radius:8px;background:#243044;color:#f8fafc;box-shadow:0 8px 20px rgba(15,23,42,.28);font:12px/1.35 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;pointer-events:none;}' +
+      '#' + TIP_ID + '.ss-show{display:flex;}' +
+      '#' + TIP_ID + ' svg{flex:none;margin-top:1px;color:#d6e4f5;}' +
+      '#' + COPIED_ID + '{position:fixed;z-index:2147483646;display:none;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;background:#e7f6ee;color:#166534;border:1px solid #b7e4c7;font:12px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-weight:700;box-shadow:0 4px 12px rgba(15,23,42,.16);pointer-events:none;}' +
+      '#' + COPIED_ID + '.ss-show{display:inline-flex;}';
   }
   function ensureRoot() {
     var root = document.getElementById(ROOT_ID);
@@ -711,8 +808,9 @@
     if (!onCarrierPage()) {
       var old = document.getElementById(ROOT_ID);
       if (old) old.remove();
-      var hot = document.getElementById(COPY_ID);
-      if (hot) hot.remove();
+      hideTip();
+      var copied = document.getElementById(COPIED_ID);
+      if (copied) copied.remove();
       return;
     }
     injectStyles();
@@ -836,7 +934,7 @@
       var b = pickDomBasic();
       if (b != null) lastBasic = b;
     }
-    var dot = digits(dotNear(boundMc));
+    var dot = digits(dotNear(el));
     if (dot) lastDot = dot;
     var name = oneLine(nameEl() && nameEl().innerText);
     if (name) lastName = name;
