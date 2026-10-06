@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Highway Carrier Quick Stats
 // @namespace    shipsierra.highway
-// @version      2026.41.2.1
+// @version      2026.41.2.2
 // @description  Power units, BASIC score, and Carrier411 on a Highway carrier page. Works on the new layout and the classic view.
 // @author       Ivan Karpenko
 // @homepageURL  https://github.com/PjSkip/TamperMonkeyScripts
@@ -646,13 +646,13 @@
 
   function injectStyles() {
     var s = document.getElementById(STYLE_ID);
-    if (s && s.getAttribute('data-ss-ver') === '2026.41.2.1') return;
+    if (s && s.getAttribute('data-ss-ver') === '2026.41.2.2') return;
     if (!s) {
       s = document.createElement('style');
       s.id = STYLE_ID;
       document.documentElement.appendChild(s);
     }
-    s.setAttribute('data-ss-ver', '2026.41.2.1');
+    s.setAttribute('data-ss-ver', '2026.41.2.2');
     s.textContent =
       '#' + ROOT_ID + '{position:fixed;z-index:2147483646;display:flex;align-items:stretch;gap:6px;height:40px;pointer-events:none;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}' +
       '#' + ROOT_ID + ' .ss-box,#' + ROOT_ID + ' a.ss-btn{pointer-events:auto;box-sizing:border-box;height:40px;display:flex;flex-direction:column;justify-content:center;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.28);}' +
@@ -672,6 +672,7 @@
       '#' + ROOT_ID + ' .hwy-mc-fail{background:#F8D0D6;color:#9B1B30;border-color:#F0A8B4;}' +
       '#' + ROOT_ID + ' .hwy-mc-partial{background:#D1E7DD;color:#0F5132;border-color:#A3CFBB;}' +
       '#' + ROOT_ID + ' .hwy-mc-wait{background:#EEF2F6;color:#4B5563;border-color:#D0D7DE;}' +
+      'span.ss-hwy-mc,a.ss-hwy-mc{color:inherit !important;text-decoration:none !important;cursor:text !important;font-weight:inherit !important;}' +
       'h1.ss-hwy-name{color:#3B6EA5 !important;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;cursor:pointer;}' +
       'h1.ss-hwy-name:hover{color:#2F5E90 !important;}' +
       'h1.ss-hwy-name.ss-hwy-name-on-dark{color:#A9C7E8 !important;}' +
@@ -787,12 +788,66 @@
     }
     return input;
   }
+  function classicAnchor() {
+    var input = document.querySelector('input.global-search-input');
+    if (!input) return null;
+    var search = input;
+    var ir = input.getBoundingClientRect();
+    var el = input.parentElement;
+    var guard = 0;
+    while (el && guard++ < 4) {
+      var r = el.getBoundingClientRect();
+      if (r.width > ir.width + 24 || r.top > 80) break;
+      if (r.height >= 28) search = el;
+      el = el.parentElement;
+    }
+    var sr = search.getBoundingClientRect();
+    var right = null;
+    var nodes = document.querySelectorAll('a, button');
+    var i;
+    for (i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      if (n.closest && n.closest('#' + ROOT_ID)) continue;
+      var nr = n.getBoundingClientRect();
+      if (nr.top > 70 || nr.height < 12 || nr.width < 24) continue;
+      if (nr.left < sr.right + 4) continue;
+      if (!right || nr.left < right.left) right = nr;
+    }
+    return { search: sr, right: right };
+  }
   function place(root) {
     var bar = topBar();
     var logo = logoLink(bar);
     var search = searchWrap(bar);
     root.style.right = 'auto';
-    if (!isNewUi() || !logo || !search) {
+    if (!isNewUi()) {
+      var classic = classicAnchor();
+      root.style.visibility = 'visible';
+      root.style.transform = 'none';
+      root.style.transformOrigin = 'left center';
+      if (!classic) {
+        root.style.top = '6px';
+        root.style.left = '50%';
+        root.style.transform = 'translateX(-50%)';
+        return;
+      }
+      var natural = root.offsetWidth || 348;
+      var naturalH = root.offsetHeight || 40;
+      var gapL = Math.round(classic.search.right) + 8;
+      var gapR = classic.right ? Math.round(classic.right.left) - 8 : Math.round(window.innerWidth - 12);
+      var available = gapR - gapL;
+      if (available < 72) {
+        root.style.visibility = 'hidden';
+        return;
+      }
+      var scale = natural > 0 ? Math.min(1, available / natural) : 1;
+      var visualH = naturalH * scale;
+      root.style.top = Math.round(classic.search.top + (classic.search.height - visualH) / 2) + 'px';
+      root.style.left = gapL + 'px';
+      root.style.transform = scale < 0.995 ? 'scale(' + scale.toFixed(3) + ')' : 'none';
+      return;
+    }
+    if (!logo || !search) {
       root.style.visibility = 'visible';
       root.style.transformOrigin = 'center top';
       root.style.top = '6px';
