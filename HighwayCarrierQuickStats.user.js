@@ -151,7 +151,7 @@
       .replace(/<[^>]+>/g, '\n')
       .replace(/&nbsp;/gi, ' ')
       .replace(/&#36;/g, '$')
-      .replace(/&/gi, '&');
+      .replace(/&amp;/gi, '&');
   }
   function prettyFgReason(s) {
     var t = String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
