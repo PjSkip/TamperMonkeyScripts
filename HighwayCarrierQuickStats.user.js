@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Highway Carrier Quick Stats
 // @namespace    shipsierra.highway
-// @version      1.5.3
+// @version      2026.41.2.1
 // @description  Power units, BASIC score, and Carrier411 on a Highway carrier page. Works on the new layout and the classic view.
 // @author       Ivan Karpenko
 // @homepageURL  https://github.com/PjSkip/TamperMonkeyScripts
@@ -399,9 +399,25 @@
     }
     return best;
   }
+  function readUiExperience() {
+    var raw = '';
+    try { raw = sessionStorage.getItem('highway:ui-experience:v1') || ''; } catch (e) {}
+    if (!raw) {
+      try { raw = localStorage.getItem('highway:ui-experience:v1') || ''; } catch (e2) {}
+    }
+    if (/classic/i.test(raw)) return 'classic';
+    if (/redesign/i.test(raw)) return 'new';
+    var current = document.querySelector('[data-ui-experience-option][aria-current="true"]');
+    if (current) {
+      var opt = current.getAttribute('data-ui-experience-option') || '';
+      if (opt === 'classic') return 'classic';
+      if (opt === 'redesign') return 'new';
+    }
+    if (document.querySelector('a.floating-nav-item, h1.carrier-name')) return 'classic';
+    return 'new';
+  }
   function isNewUi() {
-    if (document.querySelector('button[role="tab"][data-tabs-tab]')) return true;
-    return /\/broker\/carriers\/\d+\/[a-z]/i.test(location.pathname || '');
+    return readUiExperience() !== 'classic';
   }
   function tabButton(label) {
     var buttons = document.querySelectorAll('button[role="tab"], button');
@@ -630,13 +646,13 @@
 
   function injectStyles() {
     var s = document.getElementById(STYLE_ID);
-    if (s && s.getAttribute('data-ss-ver') === '1.5.3') return;
+    if (s && s.getAttribute('data-ss-ver') === '2026.41.2.1') return;
     if (!s) {
       s = document.createElement('style');
       s.id = STYLE_ID;
       document.documentElement.appendChild(s);
     }
-    s.setAttribute('data-ss-ver', '1.5.3');
+    s.setAttribute('data-ss-ver', '2026.41.2.1');
     s.textContent =
       '#' + ROOT_ID + '{position:fixed;z-index:2147483646;display:flex;align-items:stretch;gap:6px;height:40px;pointer-events:none;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}' +
       '#' + ROOT_ID + ' .ss-box,#' + ROOT_ID + ' a.ss-btn{pointer-events:auto;box-sizing:border-box;height:40px;display:flex;flex-direction:column;justify-content:center;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.28);}' +
@@ -775,14 +791,16 @@
     var bar = topBar();
     var logo = logoLink(bar);
     var search = searchWrap(bar);
-    root.style.transformOrigin = 'left center';
     root.style.right = 'auto';
-    if (!logo || !search) {
+    if (!isNewUi() || !logo || !search) {
+      root.style.visibility = 'visible';
+      root.style.transformOrigin = 'center top';
       root.style.top = '6px';
       root.style.left = '50%';
       root.style.transform = 'translateX(-50%)';
       return;
     }
+    root.style.transformOrigin = 'left center';
     root.style.transform = 'none';
     var lr = logo.getBoundingClientRect();
     var sr = search.getBoundingClientRect();
