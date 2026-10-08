@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         Highway Carrier Quick Stats
 // @namespace    shipsierra.highway
-// @version      2026.41.2.3
+// @version      2026.41.4.1
 // @description  Power units, BASIC score, and Carrier411 on a Highway carrier page. Works on the new layout and the classic view.
 // @author       Ivan Karpenko
 // @homepageURL  https://github.com/PjSkip/TamperMonkeyScripts
 // @updateURL    https://raw.githubusercontent.com/PjSkip/TamperMonkeyScripts/main/HighwayCarrierQuickStats.user.js
 // @downloadURL  https://raw.githubusercontent.com/PjSkip/TamperMonkeyScripts/main/HighwayCarrierQuickStats.user.js
-// @match        https://highway.com/broker/carriers/*
-// @match        https://*.highway.com/broker/carriers/*
+// @match        https://highway.com/broker/*
+// @match        https://*.highway.com/broker/*
 // @match        https://www.carrier411.com/*
 // @match        https://carrier411.com/*
 // @connect      highway.com
@@ -19,7 +19,7 @@
 // @grant        GM_setClipboard
 // @grant        GM_addValueChangeListener
 // @grant        GM_xmlhttpRequest
-// @run-at       document-idle
+// @run-at       document-start
 // ==/UserScript==
 
 (function () {
@@ -670,13 +670,13 @@
 
   function injectStyles() {
     var s = document.getElementById(STYLE_ID);
-    if (s && s.getAttribute('data-ss-ver') === '2026.41.2.3') return;
+    if (s && s.getAttribute('data-ss-ver') === '2026.41.4.1') return;
     if (!s) {
       s = document.createElement('style');
       s.id = STYLE_ID;
       document.documentElement.appendChild(s);
     }
-    s.setAttribute('data-ss-ver', '2026.41.2.3');
+    s.setAttribute('data-ss-ver', '2026.41.4.1');
     s.textContent =
       '#' + ROOT_ID + '{position:fixed;z-index:2147483646;display:flex;align-items:stretch;gap:6px;height:40px;pointer-events:none;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}' +
       '#' + ROOT_ID + ' .ss-box,#' + ROOT_ID + ' a.ss-btn{pointer-events:auto;box-sizing:border-box;height:40px;display:flex;flex-direction:column;justify-content:center;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.28);}' +
@@ -1060,6 +1060,7 @@
   if (!ON_HWY) return;
 
   var scheduled = false;
+  var lastHref = location.href;
   function schedule() {
     if (scheduled) return;
     scheduled = true;
@@ -1071,38 +1072,63 @@
         render();
         return;
       }
-      if (id !== lastId) loadCarrier(id);
+      if (id !== lastId || !document.getElementById(ROOT_ID)) loadCarrier(id);
       syncFromDom();
-    }, 200);
+    }, 150);
   }
 
   function hookHistory() {
-    var push = history.pushState;
-    history.pushState = function () {
-      var r = push.apply(this, arguments);
-      schedule();
-      return r;
-    };
+    ['pushState', 'replaceState'].forEach(function (name) {
+      var orig = history[name];
+      if (!orig || orig.__ssQs) return;
+      var wrapped = function () {
+        var r = orig.apply(this, arguments);
+        schedule();
+        return r;
+      };
+      wrapped.__ssQs = true;
+      history[name] = wrapped;
+    });
     window.addEventListener('popstate', schedule);
+    window.addEventListener('pageshow', schedule);
+    window.addEventListener('hashchange', schedule);
+  }
+
+  function watchDom() {
+    var node = document.documentElement;
+    if (!node || node.__ssQsObs) return;
+    node.__ssQsObs = true;
+    new MutationObserver(function () { schedule(); }).observe(node, { childList: true, subtree: true });
   }
 
   function start() {
+    if (window.__ssQsStarted) return;
+    window.__ssQsStarted = true;
     hookHistory();
+    watchDom();
     schedule();
-    var root = document.body || document.documentElement;
-    if (root) {
-      new MutationObserver(function () { schedule(); }).observe(root, { childList: true, subtree: true });
-    }
+    document.addEventListener('DOMContentLoaded', function () {
+      watchDom();
+      schedule();
+    });
+    window.addEventListener('load', schedule);
     window.addEventListener('resize', function () { render(); });
     window.addEventListener('scroll', function () { bindCopy(); }, true);
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', function () { render(); });
     }
     setInterval(function () {
-      if (onCarrierPage()) render();
-    }, 800);
+      watchDom();
+      if (location.href !== lastHref) {
+        lastHref = location.href;
+        schedule();
+        return;
+      }
+      if (!onCarrierPage()) return;
+      if (!document.getElementById(ROOT_ID)) schedule();
+      else render();
+    }, 500);
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
-  else start();
+  start();
 })();
