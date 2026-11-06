@@ -290,7 +290,7 @@
 
   function escapeHtml(text) {
     return String(text).replace(/[&<>"]/g, function (ch) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": """ }[ch];
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "\u0026quot;" }[ch];
     });
   }
 
