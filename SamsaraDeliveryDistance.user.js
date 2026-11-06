@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Samsara delivery distance
 // @namespace    shipsierra.samsara.delivery
-// @version      1.12.0
+// @version      1.13.0
 // @description  Pin a confirmed delivery on a Samsara live viewer map and open driving directions from the truck GPS.
 // @author       Ivan Karpenko
 // @homepageURL  https://github.com/PjSkip/TamperMonkeyScripts
@@ -49,8 +49,36 @@
     routeCasing: null,
     suggestTimer: null,
     suggestGen: 0,
-    org: ""
+    org: "",
+    watch: null,
+    booted: false
   };
+
+  function asleep() {
+    return document.hidden || document.visibilityState === "hidden";
+  }
+
+  function stopWatch() {
+    if (!state.watch) return;
+    state.watch.disconnect();
+    state.watch = null;
+  }
+
+  function stopLoops() {
+    if (state.timer) {
+      clearInterval(state.timer);
+      state.timer = null;
+    }
+    if (state.suggestTimer) {
+      clearTimeout(state.suggestTimer);
+      state.suggestTimer = null;
+    }
+    if (state.watchTimer) {
+      clearTimeout(state.watchTimer);
+      state.watchTimer = null;
+    }
+    stopWatch();
+  }
 
   function orgFromPath() {
     var match = location.pathname.match(/^\/o\/(\d+)\/fleet\/viewer(?:\/|$)/);
@@ -770,7 +798,7 @@
 
     var panel = el("section", {
       id: PANEL_ID,
-      "data-ss-version": "1.12.0",
+      "data-ss-version": "1.13.0",
       style: "box-sizing:border-box;height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;margin:12px 0 12px 12px;padding:16px;border:0;border-radius:18px;background:#fff;font:13px/1.45 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#101828;box-shadow:0 10px 30px rgba(16,24,40,.08)"
     });
     var pin = el("div", { "data-ss": "pin", style: "flex:0 0 auto" });
@@ -925,10 +953,25 @@
     route();
   }
 
+  function mapStillThere() {
+    if (!state.map || !state.map.getDiv) return false;
+    try {
+      var div = state.map.getDiv();
+      return !!(div && document.documentElement.contains(div));
+    } catch (e) {
+      return false;
+    }
+  }
+
   function tick() {
+    if (asleep()) {
+      stopLoops();
+      return;
+    }
     if (!onViewer()) {
       state.org = "";
       cleanup(false);
+      stopLoops();
       return;
     }
     var org = orgFromPath();
@@ -950,11 +993,13 @@
     var field = ui() && ui().querySelector("[data-ss='input']");
     if (field) bindSuggest(field);
     layout();
-    var map = findMap();
-    if (map) {
-      if (state.map && state.map !== map) clearMarker();
-      state.map = map;
-      if (state.delivery && !state.marker) placeMarker();
+    if (!mapStillThere()) {
+      var map = findMap();
+      if (map) {
+        if (state.map && state.map !== map) clearMarker();
+        state.map = map;
+        if (state.delivery && !state.marker) placeMarker();
+      }
     }
     var gps = findGps();
     state.origin = gps;
@@ -966,6 +1011,8 @@
       renderResults();
       syncButtons();
     }
+    if (document.getElementById(PANEL_ID)) stopWatch();
+    else armWatch();
   }
 
   function cleanup(keepStore) {
@@ -977,23 +1024,75 @@
     if (!keepStore) state.delivery = null;
   }
 
+  function armWatch() {
+    if (state.watch || asleep() || document.getElementById(PANEL_ID)) return;
+    state.watch = new MutationObserver(function () {
+      if (asleep() || document.getElementById(PANEL_ID)) {
+        stopWatch();
+        return;
+      }
+      if (state.watchTimer) return;
+      state.watchTimer = setTimeout(function () {
+        state.watchTimer = null;
+        if (!asleep() && !document.getElementById(PANEL_ID)) tick();
+      }, 250);
+    });
+    state.watch.observe(document.documentElement, { childList: true, subtree: true });
+  }
+
+  function startLoops() {
+    if (asleep() || !onViewer()) {
+      stopLoops();
+      return;
+    }
+    armWatch();
+    if (!state.timer) state.timer = setInterval(tick, 4000);
+    tick();
+  }
+
+  function onPageState() {
+    if (asleep() || !onViewer()) {
+      stopLoops();
+      return;
+    }
+    if (!state.timer) startLoops();
+    else if (!document.getElementById(PANEL_ID)) tick();
+  }
+
+  function hookHistory() {
+    if (state.historyHooked) return;
+    state.historyHooked = true;
+    ["pushState", "replaceState"].forEach(function (name) {
+      var orig = history[name];
+      if (!orig) return;
+      history[name] = function () {
+        var result = orig.apply(this, arguments);
+        onPageState();
+        return result;
+      };
+    });
+    window.addEventListener("popstate", onPageState);
+  }
+
   function boot() {
-    if (state.timer) return;
+    if (state.booted) return;
+    state.booted = true;
     if (!document.getElementById("ss-delivery-style")) {
       var css = document.createElement("style");
       css.id = "ss-delivery-style";
       css.textContent = ".pac-container{z-index:100000;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif}";
       document.documentElement.appendChild(css);
     }
-    var watch = new MutationObserver(function () {
-      if (!document.getElementById(PANEL_ID)) tick();
-    });
-    watch.observe(document.documentElement, { childList: true, subtree: true });
-    state.timer = setInterval(tick, 4000);
+    document.addEventListener("visibilitychange", onPageState);
+    document.addEventListener("freeze", stopLoops);
+    document.addEventListener("resume", onPageState);
+    window.addEventListener("pagehide", stopLoops);
+    window.addEventListener("pageshow", onPageState);
+    hookHistory();
     if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", tick);
+      document.addEventListener("DOMContentLoaded", onPageState);
     }
-    tick();
+    onPageState();
   }
 
   boot();
