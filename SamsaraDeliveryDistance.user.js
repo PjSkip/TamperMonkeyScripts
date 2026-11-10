@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Samsara delivery distance
 // @namespace    shipsierra.samsara.delivery
-// @version      1.14.2
+// @version      1.14.3
 // @description  Pin a confirmed delivery on a Samsara live viewer map and open driving directions from the truck GPS.
 // @author       Ivan Karpenko
 // @homepageURL  https://github.com/PjSkip/TamperMonkeyScripts
@@ -798,7 +798,7 @@
 
     var panel = el("section", {
       id: PANEL_ID,
-      "data-ss-version": "1.14.2",
+      "data-ss-version": "1.14.3",
       style: "box-sizing:border-box;height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;margin:12px 0 12px 12px;padding:16px;border:0;border-radius:18px;background:#fff;font:13px/1.45 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#101828;box-shadow:0 10px 30px rgba(16,24,40,.08)"
     });
     var pin = el("div", { "data-ss": "pin", style: "flex:0 0 auto" });
@@ -1039,31 +1039,19 @@
     return Math.round(turn) + "° " + dirs[Math.round(turn / 45) % 8];
   }
 
+  function latestLocation(device) {
+    var list = device.location || [];
+    var best = null;
+    for (var i = 0; i < list.length; i++) {
+      if (!best || list[i].time > best.time) best = list[i];
+    }
+    return best || {};
+  }
+
   function engineLabel(stat) {
     if (!stat) return "n/a";
     var names = { 0: "Off", 1: "On", 2: "Idle" };
-    var name = names[stat.value] || ("State " + stat.value);
-    if (!stat.time) return name;
-    var mins = Math.round((Date.now() - stat.time) / 60000);
-    if (mins < 2) return name;
-    if (mins < 60) return name + " · " + mins + " min ago";
-    var hours = Math.round(mins / 60);
-    return name + " · " + hours + " hr ago";
-  }
-
-  function cableLabel(device) {
-    var events = device.deviceCable && device.deviceCable.powerStatusEvents;
-    if (!events || !events.length) return "None";
-    return events[events.length - 1].isOn ? "On" : "Off";
-  }
-
-  function sourceLabel(loc) {
-    if (!loc) return "n/a";
-    var source = loc.locationSource === "LOCATION_SOURCE_GPS_FIX" ? "GPS" : "Location";
-    if (typeof loc.accuracyMillimeters === "number") {
-      source += " · " + Math.max(1, Math.round(loc.accuracyMillimeters / 1000)) + " m";
-    }
-    return source;
+    return names[stat.value] || ("State " + stat.value);
   }
 
   function renderUnitStats() {
@@ -1076,15 +1064,13 @@
     var label = fleet.description || fleet.device.name;
     var host = findUnitHost(label) || findUnitHost("");
     if (!host || !host.parentNode) return;
-    var loc = fleet.device.location[0] || {};
+    var loc = latestLocation(fleet.device);
     var box = old || document.createElement("div");
     box.id = "ss-unit-stats";
     var bits = [
       speedLabel(loc.speed),
       headingLabel(loc.heading),
-      engineLabel(fleet.device.engineState[0]),
-      "Cable " + cableLabel(fleet.device),
-      sourceLabel(loc)
+      engineLabel(fleet.device.engineState[0])
     ];
     var driver = fleet.device.currentDriver && fleet.device.currentDriver.name;
     if (driver) bits.push(driver);
