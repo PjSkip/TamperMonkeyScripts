@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Samsara delivery distance
 // @namespace    shipsierra.samsara.delivery
-// @version      1.14.0
+// @version      1.14.1
 // @description  Pin a confirmed delivery on a Samsara live viewer map and open driving directions from the truck GPS.
 // @author       Ivan Karpenko
 // @homepageURL  https://github.com/PjSkip/TamperMonkeyScripts
@@ -798,7 +798,7 @@
 
     var panel = el("section", {
       id: PANEL_ID,
-      "data-ss-version": "1.14.0",
+      "data-ss-version": "1.14.1",
       style: "box-sizing:border-box;height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;margin:12px 0 12px 12px;padding:16px;border:0;border-radius:18px;background:#fff;font:13px/1.45 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#101828;box-shadow:0 10px 30px rgba(16,24,40,.08)"
     });
     var pin = el("div", { "data-ss": "pin", style: "flex:0 0 auto" });
@@ -970,7 +970,7 @@
     return key ? root[key] : null;
   }
 
-  function walkFiber(visit) {
+  function walkContentFiber(visit) {
     var fiber = reactRoot();
     var seen = 0;
     function walk(node, depth) {
@@ -1002,7 +1002,7 @@
         if (value && typeof value === "object") scanValue(value, depth + 1);
       }
     }
-    walkFiber(function (node) {
+    walkContentFiber(function (node) {
       scanValue(node.memoizedProps, 0);
       scanValue(node.memoizedState, 0);
       return false;
@@ -1012,7 +1012,7 @@
 
   function findUnitHost(label) {
     var host = null;
-    walkFiber(function (node) {
+    walkContentFiber(function (node) {
       var props = node.memoizedProps;
       var el = node.stateNode;
       if (!props || !el || el.nodeType !== 1) return false;
