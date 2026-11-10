@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Samsara delivery distance
 // @namespace    shipsierra.samsara.delivery
-// @version      1.13.0
+// @version      1.14.0
 // @description  Pin a confirmed delivery on a Samsara live viewer map and open driving directions from the truck GPS.
 // @author       Ivan Karpenko
 // @homepageURL  https://github.com/PjSkip/TamperMonkeyScripts
@@ -798,7 +798,7 @@
 
     var panel = el("section", {
       id: PANEL_ID,
-      "data-ss-version": "1.13.0",
+      "data-ss-version": "1.14.0",
       style: "box-sizing:border-box;height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;margin:12px 0 12px 12px;padding:16px;border:0;border-radius:18px;background:#fff;font:13px/1.45 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#101828;box-shadow:0 10px 30px rgba(16,24,40,.08)"
     });
     var pin = el("div", { "data-ss": "pin", style: "flex:0 0 auto" });
@@ -963,6 +963,140 @@
     }
   }
 
+  function reactRoot() {
+    var root = document.getElementById("content");
+    if (!root) return null;
+    var key = Object.keys(root).find(function (name) { return name.indexOf("__reactContainer") === 0; });
+    return key ? root[key] : null;
+  }
+
+  function walkFiber(visit) {
+    var fiber = reactRoot();
+    var seen = 0;
+    function walk(node, depth) {
+      if (!node || depth > 70 || seen > 8000) return;
+      seen++;
+      if (visit(node)) return;
+      walk(node.child, depth + 1);
+      walk(node.sibling, depth);
+    }
+    walk(fiber, 0);
+  }
+
+  function readFleet() {
+    var found = { device: null, description: "" };
+    var seen = new Set();
+    function scanValue(obj, depth) {
+      if (!obj || typeof obj !== "object" || depth > 7 || seen.has(obj)) return;
+      seen.add(obj);
+      if (seen.size > 6000) return;
+      if (obj.devices && typeof obj.description === "string") found.description = obj.description;
+      var loc = obj.location && obj.location[0];
+      if (!found.device && obj.name && loc && typeof loc.speed === "number" && obj.engineState) {
+        found.device = obj;
+      }
+      var keys;
+      try { keys = Object.keys(obj); } catch (e) { return; }
+      for (var i = 0; i < keys.length && i < 24; i++) {
+        var value = obj[keys[i]];
+        if (value && typeof value === "object") scanValue(value, depth + 1);
+      }
+    }
+    walkFiber(function (node) {
+      scanValue(node.memoizedProps, 0);
+      scanValue(node.memoizedState, 0);
+      return false;
+    });
+    return found.device ? found : null;
+  }
+
+  function findUnitHost(label) {
+    var host = null;
+    walkFiber(function (node) {
+      var props = node.memoizedProps;
+      var el = node.stateNode;
+      if (!props || !el || el.nodeType !== 1) return false;
+      if (typeof props.className !== "string" || props.className.indexOf("header--description") === -1) return false;
+      var text = (el.textContent || "").trim();
+      if (label && text !== label) return false;
+      host = el;
+      return true;
+    });
+    return host;
+  }
+
+  function speedLabel(raw) {
+    if (typeof raw !== "number" || !isFinite(raw)) return "n/a";
+    var mph = raw > 250 ? raw * 0.00115077945 : raw;
+    var rounded = Math.round(mph * 10) / 10;
+    return (rounded % 1 === 0 ? String(rounded) : rounded.toFixed(1)) + " mph";
+  }
+
+  function headingLabel(deg) {
+    if (typeof deg !== "number" || !isFinite(deg)) return "n/a";
+    var dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+    var turn = ((deg % 360) + 360) % 360;
+    return Math.round(turn) + "° " + dirs[Math.round(turn / 45) % 8];
+  }
+
+  function engineLabel(stat) {
+    if (!stat) return "n/a";
+    var names = { 0: "Off", 1: "On", 2: "Idle" };
+    var name = names[stat.value] || ("State " + stat.value);
+    if (!stat.time) return name;
+    var mins = Math.round((Date.now() - stat.time) / 60000);
+    if (mins < 2) return name;
+    if (mins < 60) return name + " · " + mins + " min ago";
+    var hours = Math.round(mins / 60);
+    return name + " · " + hours + " hr ago";
+  }
+
+  function cableLabel(device) {
+    var events = device.deviceCable && device.deviceCable.powerStatusEvents;
+    if (!events || !events.length) return "None";
+    return events[events.length - 1].isOn ? "On" : "Off";
+  }
+
+  function sourceLabel(loc) {
+    if (!loc) return "n/a";
+    var source = loc.locationSource === "LOCATION_SOURCE_GPS_FIX" ? "GPS" : "Location";
+    if (typeof loc.accuracyMillimeters === "number") {
+      source += " · " + Math.max(1, Math.round(loc.accuracyMillimeters / 1000)) + " m";
+    }
+    return source;
+  }
+
+  function renderUnitStats() {
+    var fleet = readFleet();
+    var old = document.getElementById("ss-unit-stats");
+    if (!fleet) {
+      if (old) old.remove();
+      return;
+    }
+    var label = fleet.description || fleet.device.name;
+    var host = findUnitHost(label) || findUnitHost("");
+    if (!host || !host.parentNode) return;
+    var loc = fleet.device.location[0] || {};
+    var box = old || document.createElement("div");
+    box.id = "ss-unit-stats";
+    var bits = [
+      speedLabel(loc.speed),
+      headingLabel(loc.heading),
+      engineLabel(fleet.device.engineState[0]),
+      "Cable " + cableLabel(fleet.device),
+      sourceLabel(loc)
+    ];
+    var driver = fleet.device.currentDriver && fleet.device.currentDriver.name;
+    if (driver) bits.push(driver);
+    box.textContent = "";
+    bits.forEach(function (text) {
+      var pill = document.createElement("span");
+      pill.textContent = text;
+      box.appendChild(pill);
+    });
+    if (host.nextSibling !== box) host.parentNode.insertBefore(box, host.nextSibling);
+  }
+
   function tick() {
     if (asleep()) {
       stopLoops();
@@ -989,6 +1123,7 @@
     var legacy = document.getElementById("ss-delivery-panel");
     if (legacy) legacy.remove();
     if (!document.querySelector(".FleetViewerV2-header")) return;
+    renderUnitStats();
     mount();
     var field = ui() && ui().querySelector("[data-ss='input']");
     if (field) bindSuggest(field);
@@ -1018,6 +1153,8 @@
   function cleanup(keepStore) {
     var panel = document.getElementById(PANEL_ID);
     if (panel) panel.remove();
+    var unit = document.getElementById("ss-unit-stats");
+    if (unit) unit.remove();
     clearMarker();
     state.map = null;
     state.origin = null;
@@ -1077,12 +1214,16 @@
   function boot() {
     if (state.booted) return;
     state.booted = true;
-    if (!document.getElementById("ss-delivery-style")) {
-      var css = document.createElement("style");
+    var unitCss = "#ss-unit-stats{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}"
+      + "#ss-unit-stats span{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:999px;background:rgba(255,255,255,.14);color:#fff;font:600 12px/1.2 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;letter-spacing:0;white-space:nowrap;border:1px solid rgba(255,255,255,.2)}";
+    var css = document.getElementById("ss-delivery-style");
+    if (!css) {
+      css = document.createElement("style");
       css.id = "ss-delivery-style";
       css.textContent = ".pac-container{z-index:100000;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif}";
       document.documentElement.appendChild(css);
     }
+    if (css.textContent.indexOf("#ss-unit-stats") === -1) css.textContent += unitCss;
     document.addEventListener("visibilitychange", onPageState);
     document.addEventListener("freeze", stopLoops);
     document.addEventListener("resume", onPageState);
