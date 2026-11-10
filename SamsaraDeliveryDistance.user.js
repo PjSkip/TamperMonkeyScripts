@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Samsara delivery distance
 // @namespace    shipsierra.samsara.delivery
-// @version      1.14.1
+// @version      1.14.2
 // @description  Pin a confirmed delivery on a Samsara live viewer map and open driving directions from the truck GPS.
 // @author       Ivan Karpenko
 // @homepageURL  https://github.com/PjSkip/TamperMonkeyScripts
@@ -364,11 +364,11 @@
       miles = state.delivery.straight.toFixed(1) + " mi straight-line";
     }
     return {
-      plain: "Truck's Current Location: " + where + "\n" +
-        "Distance to Delivery: " + miles + "\n\n" +
+      plain: "Truck's Current Location: " + where + "\n\n" +
+        "Distance to Stop: " + miles + "\n\n" +
         "Tracking Link: " + location.href,
-      html: "Truck's Current Location: <b>" + escapeHtml(where) + "</b><br>" +
-        "Distance to Delivery: <b>" + escapeHtml(miles) + "</b><br><br>" +
+      html: "Truck's Current Location: <b>" + escapeHtml(where) + "</b><br><br>" +
+        "Distance to Stop: <b>" + escapeHtml(miles) + "</b><br><br>" +
         "Tracking Link: " + escapeHtml(location.href)
     };
   }
@@ -798,7 +798,7 @@
 
     var panel = el("section", {
       id: PANEL_ID,
-      "data-ss-version": "1.14.1",
+      "data-ss-version": "1.14.2",
       style: "box-sizing:border-box;height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;margin:12px 0 12px 12px;padding:16px;border:0;border-radius:18px;background:#fff;font:13px/1.45 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#101828;box-shadow:0 10px 30px rgba(16,24,40,.08)"
     });
     var pin = el("div", { "data-ss": "pin", style: "flex:0 0 auto" });
