@@ -40,7 +40,7 @@
   var C411_CACHE_KEY = 'c411_fg_cache_v2';
   var C411_CLAIM_KEY = 'c411_claim_v1';
   var SETTINGS_KEY = 'hwy_c411_badge_settings_v3';
-  var SCRIPT_VERSION = '2026.11.1.2';
+  var SCRIPT_VERSION = '2026.45.2.3';
   var SCRIPT_TITLE = 'ShipSierra.com Carrier Check on Hwy/C411';
   var RELEASE_DATE = 'November 3, 2026';
   var ORG_MC_KEY = 'ss_org_mc';
