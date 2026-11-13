@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Gmail Highway Carrier411 MC badges
 // @namespace    shipsierra.highway.gmail
-// @version      2026.39.4.1
+// @version      2026.45.2.3
 // @description  Highway and Carrier411 carrier info next to MC numbers in Gmail.
 // @author       Ivan Karpenko
 // @copyright    2026, ShipSierra.com (Ivan Karpenko)
@@ -40,9 +40,9 @@
   var C411_CACHE_KEY = 'c411_fg_cache_v2';
   var C411_CLAIM_KEY = 'c411_claim_v1';
   var SETTINGS_KEY = 'hwy_c411_badge_settings_v3';
-  var SCRIPT_VERSION = '2026.39.4.1';
+  var SCRIPT_VERSION = '2026.11.1.2';
   var SCRIPT_TITLE = 'ShipSierra.com Carrier Check on Hwy/C411';
-  var RELEASE_DATE = 'October 1, 2026';
+  var RELEASE_DATE = 'November 3, 2026';
   var ORG_MC_KEY = 'ss_org_mc';
   var ORG_MC_NEED_KEY = 'ss_org_mc_need';
   var NOTES_VER_KEY = 'ss_notes_ver';
@@ -56,7 +56,9 @@
   var CARET_PX = 11;
   var HWY_FAIL_REPLY =
     'Thanks for your interest in this load. Unfortunately you do not pass our Highway.com requirements, so we are unable to proceed.';
-  var RELEASE_NOTES = 'Bug fixes.\nA slider sets how many of the newest messages to check.';
+  var RELEASE_NOTES =
+    'New minimize button (orange dot) at the top left of the carrier bar. It pauses Carrier Vetting. Resume from the truck icon menu.\n' +
+    'Bug fixes: failed lookups retry on their own, Carrier411 checks can no longer get stuck waiting on another tab and rates only link to the carrier found in the same email.';
   var HWY_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAHGSURBVHgB7ZZNTsJQEMdnWqWwqwsjyx5BtxJjOQF6AnoDuYF4MkgMuhRPQNlh3LCyBdOOry2B8j4LYWd/m5fMTOf937yPKUBNzX8HTQHRpD1EpGfOPG3eft2UDfHb1YwNXtlGhC+tzmIIGiwwKUTqC0aCucT2KSRHegIDWgHRa9sHblWFKgh5UwqijQDcTY7jBICdBgpPCBVE5RPY+iooBUSjtoeAfZmPEpwK8xMuFal8GrkuHCoAGuCrXLaVCJPZkExlsdk2rBwngEMFIKTK0jU638JkiWWrKpDRU88jYT25vE7R+gA1ocLuqT5g29Zt3S3GvP1MFpwgDgwPhAcHgjY9sGHM26VbwA7fPZwYtqC+7DAKAtjLF8ARKzSRHcYfp+WDSYD05TsRtuRg7211fvcdmoGeUO0iVmJ0QYOzWl1gd7m9MfuHsAEBGLAofZRdw4zonS2A9AuIG80BG4bbfGVnlfKfr39Dla8Zx7q3oJiQa1BbAcrGU4Lt17JcPsGf+0grgm9QuwqoG0/54xDMQcaYcoPKBegaD5d8bowBrBCza1BFBTSNZz+3eXVphSqVG5RV5E2Nfy4bQmNEBZEbelBTU8P4A46qjYFyL5/4AAAAAElFTkSuQmCC';
   var C411_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAC1UlEQVR4nMSWTUwTQRTHZ5cWqkAopAoVFA2CihEwaow1ICSGg0D0oKLx4MFEL3Iw4SAYY4gQ4sfJePOgXvwIEBWDMR4Uw4cGjdHwWTCBgBJaU8XWUtvd7vp/W7M0bS3hsOs7/Dp9b2by/pl5b9ZQd+sUY2xi1s7+bUFRjvJIbCnLz9oE8kxjM3yeG8cPx3Mxw6FMOSUNn/83aE23gmvSc0D3ghu0fx0FjXxixFr7LPm1VxA/LAZFcNv6ErDlxDUw2ZQaMcfrIx2tbc1gz3A3bcovbqu5Au5AS2nMgBAQwMrt1WD9wQvgT28AvN7eC844f4A5Gcng6ard4LqsdPBqB+l4NvAUTOATdFJQFifc1dgNTjt/gYdbO0DB71ejkt+rju+erwVL8rPBo601oMvjYrrcoqgCCIp0cyqLq5V/FG560E9+iWqCNxrJLfgolkD5ZaaZwK7+IVVBedF+sK33vi4KuOgS5qjzZJqzVMebiTkwxUBTZUVfqBPJEs0szKWZVbZC0PGdTiV1BdWKLMvsf1Uyp+KvyXLMxaFTsVrSGNU8jc0ppsUNlOT1OAMuLKMg5SITR78Mqf4jtnyw8+2Ymlgor2yLGaw/VgG2vfwA7tycCzrm6cx4TpdKNsjKnQkI1GdKt5SDeavpJbIV7FMnXay1gdMO6j/vxmYUH2UmiKT1Sc8gWLO3GPT4PGDnQDtoMq5keigI9byGQ01gxdbKiPCUc1Id3z5HtT00+Q3sG5kCC9dawNKiDeqcszfPgEmJdJdkpVq076YuN2WUkWqJGS67RG+ZOTkDPL7nJLhj4y6wwEp1Oz47Ar6fGADv9d4BA8orEm7aK5CjqtS9MA82P6JXbHD6U0RUFMSYGxk4Y0y/vgpeDb8Abzy/AgbEAFu+SVGLtFcgKR3x8uNGsM/+GkwyGJdcFhTiRaWwL1ftFTQ8rGN0Wz6y5ZskcHGieauoB2uu4A8AAAD//1ZDwTcAAAAGSURBVAMARiLtUypmc+4AAAAASUVORK5CYII=';
   var SET_LOGO = 'data:image/png;base64,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';
@@ -208,6 +210,17 @@
       '.ss-intel-msg{display:inline-flex;flex-direction:column;align-items:flex-end;gap:0;width:auto;max-width:100%;' +
       'box-sizing:border-box;margin:0 0 0 auto !important;padding:0;float:none !important;overflow:hidden;' +
       'font:11px/1.25 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;color:#202124;}' +
+      '.ss-intel-msg .ss-intel-min{display:block;position:relative;align-self:flex-start;flex:none;width:12px;height:12px;min-width:12px;' +
+      'margin:0 0 2px 0;padding:0;border:1px solid #dea123 !important;border-radius:50%;background:#febc2e;box-sizing:border-box;' +
+      'cursor:pointer;outline:none;box-shadow:none;line-height:0;font-size:0;}' +
+      '.ss-intel-msg .ss-intel-min::after{content:"";position:absolute;left:2px;right:2px;top:50%;height:1.5px;margin-top:-0.75px;' +
+      'background:#985712;border-radius:1px;}' +
+      '.ss-intel-msg .ss-intel-head{display:flex;flex-direction:row;align-items:center;gap:6px;align-self:flex-start;margin:0 0 2px 0;max-width:100%;min-width:0;}' +
+      '.ss-intel-msg .ss-intel-head .ss-intel-min{margin:0;}' +
+      '.ss-intel-msg .ss-intel-row .ss-intel-min{display:inline-block;align-self:center;vertical-align:middle;margin:0 6px 0 0;}' +
+      '.ss-intel-msg .ss-intel-head-name{font-weight:600;color:#202124;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}' +
+      '.ss-intel-msg .ss-intel-min:hover{background:#f5a623;}' +
+      '.ss-intel-msg .ss-intel-min:focus-visible{box-shadow:0 0 0 2px rgba(26,115,232,.45);}' +
       '.ss-intel-msg .ss-intel-card{display:flex;flex-direction:column;align-items:flex-start;gap:3px;margin:0;' +
       'padding:3px 8px;border:1px solid #e2e8f0 !important;border-radius:6px;min-width:0;max-width:100%;' +
       'width:max-content;background:#f8fafc;text-align:left;box-shadow:none !important;outline:none !important;}' +
@@ -1846,9 +1859,16 @@
     return status === 401 || status === 403;
   }
   var hwyAborts = {};
+  function dropHwyAbort(mc, h) {
+    var list = hwyAborts[mc];
+    if (!list) return;
+    var at = list.indexOf(h);
+    if (at >= 0) list.splice(at, 1);
+    if (!list.length) delete hwyAborts[mc];
+  }
   function abortHwy(mc) {
     var list = hwyAborts[mc];
-    hwyAborts[mc] = [];
+    delete hwyAborts[mc];
     if (!list) return;
     var i;
     for (i = 0; i < list.length; i++) {
@@ -1860,12 +1880,14 @@
   function gmGet(url, mc) {
     return new Promise(function (resolve, reject) {
       var settled = false;
+      var h = null;
       function finish(fn, arg) {
         if (settled) return;
         settled = true;
+        if (mc && h) dropHwyAbort(mc, h);
         fn(arg);
       }
-      var h = GM_xmlhttpRequest({
+      h = GM_xmlhttpRequest({
         method: 'GET',
         url: url,
         anonymous: false,
@@ -1904,7 +1926,7 @@
           finish(reject, new Error('abort'));
         }
       });
-      if (mc && h) {
+      if (mc && h && !settled) {
         if (!hwyAborts[mc]) hwyAborts[mc] = [];
         hwyAborts[mc].push(h);
       }
@@ -2052,7 +2074,19 @@
     if (fg && fg.count > 1 && fg.count > lines.length) lines.push(fg.count + ' FreightGuard reports');
     return lines.join('\n') || 'FreightGuard';
   }
+  var C411_LOGGED_OUT_MARK = '<!--ss-c411-logged-out-->';
+  function c411LogoutEvidence(res, html) {
+    if (isC411Challenge(html)) return false;
+    var url = String((res && res.finalUrl) || '');
+    var status = res && res.status;
+    if (/unauthorized=1|login|signin|sign_in/i.test(url)) return true;
+    // Logged-out members get bounced off /manager/ pages to the public site.
+    if (url && /carrier411\.com/i.test(url) && !/\/manager\//i.test(url) && !/USDOT\s+\d+/i.test(html)) return true;
+    if (status === 401) return true;
+    return false;
+  }
   function parseC411Page(html) {
+    if (String(html || '').indexOf(C411_LOGGED_OUT_MARK) === 0) return { ok: false, login: true, hasFg: false };
     var plain = stripHtml(html);
     var hasUsdot = /USDOT\s+\d+/i.test(plain);
     var loggedOut = /type=["']password["']/i.test(html) && !hasUsdot;
@@ -2269,6 +2303,12 @@
     });
   }
   var c411ClaimMem = null;
+  // Upper bounds so a stuck Carrier411 request can never hold the cross-tab claim or keep
+  // other tabs waiting forever. The request itself times out after 15 s and a claim with no
+  // heartbeat for 20 s already counts as expired (c411ClaimLive).
+  var C411_WAIT_MAX_MS = 40000;
+  var C411_HEARTBEAT_MAX_MS = 45000;
+  var C411_FETCH_MAX_MS = 30000;
   var c411OwnerId = 'o' + Math.random().toString(36).slice(2) + Date.now().toString(36);
   var c411Heartbeats = {};
   function readC411Claims() {
@@ -2331,7 +2371,12 @@
     mc = normMc(mc);
     if (!mc) return;
     stopC411Heartbeat(mc);
+    var beganAt = Date.now();
     c411Heartbeats[mc] = setInterval(function () {
+      if (Date.now() - beganAt > C411_HEARTBEAT_MAX_MS) {
+        stopC411Heartbeat(mc);
+        return;
+      }
       touchOwnClaim(mc);
     }, 5000);
   }
@@ -2353,6 +2398,7 @@
     mc = normMc(mc);
     return new Promise(function (resolve) {
       var done = false;
+      var waitStart = Date.now();
       function finish(out) {
         if (done) return;
         done = true;
@@ -2370,7 +2416,11 @@
             finish({ kind: 'result', hit: hit });
             return;
           }
-          if (!c411ClaimLive(claimFor(mc), Date.now())) finish({ kind: 'dead' });
+          if (!c411ClaimLive(claimFor(mc), Date.now())) {
+            finish({ kind: 'dead' });
+            return;
+          }
+          if (Date.now() - waitStart >= C411_WAIT_MAX_MS) finish({ kind: 'timeout' });
         } catch (e) {
           finish({ kind: 'dead' });
         }
@@ -2398,6 +2448,7 @@
         headers: { Accept: 'text/html' },
         onload: function (res) {
           var html = String(res.responseText || '');
+          if (c411LogoutEvidence(res, html)) html = C411_LOGGED_OUT_MARK + html;
           if (settled) {
             try {
               if (typeof hooks.onLate === 'function') hooks.onLate(html, res);
@@ -2428,6 +2479,11 @@
           if (settled) return;
           settled = true;
           reject(new Error('timeout'));
+        },
+        onabort: function () {
+          if (settled) return;
+          settled = true;
+          reject(new Error('abort'));
         }
       });
     });
@@ -2504,35 +2560,66 @@
     var slot = {};
     slot.p = new Promise(function (resolve) {
       var finished = false;
+      var owned = false;
       function finish(fg) {
         if (finished) return;
         finished = true;
+        if (owned) {
+          // Every way out of an owned fetch ends here, so the heartbeat and claim always stop.
+          stopC411Heartbeat(mc);
+          clearOwnClaim(mc);
+        }
         if (c411Inflight[mc] === slot.p) delete c411Inflight[mc];
         resolve(fg || { ok: false, hasFg: false, error: true });
         pumpC411();
       }
-      function startOwnedFetch() {
+      function startOwnedFetch(takeOver) {
         if (finished) return;
         if (c411Active >= 2) {
-          c411Wait.push(startOwnedFetch);
+          c411Wait.push(function () {
+            startOwnedFetch(takeOver);
+          });
           return;
         }
-        if (!writeOwnClaim(mc)) {
+        if (takeOver) {
+          // The other tab's claim outlived the max wait, so treat it as expired and take it.
+          var allClaims = readC411Claims();
+          allClaims[mc] = { owner: c411OwnerId, mc: mc, t: Date.now() };
+          writeC411Claims(allClaims);
+        } else if (!writeOwnClaim(mc)) {
           decide(true);
           return;
         }
+        owned = true;
         startC411Heartbeat(mc);
         c411Active += 1;
+        var released = false;
+        function release() {
+          if (released) return;
+          released = true;
+          c411Active -= 1;
+          if (c411Active < 0) c411Active = 0;
+        }
+        var watchdog = setTimeout(function () {
+          release();
+          finish(getC411Cached(mc) || c411FailureRecord(new Error('stuck')));
+        }, C411_FETCH_MAX_MS);
         var startedAt = Date.now();
-        fetchC411Direct(mc, startedAt)
+        var job;
+        try {
+          job = fetchC411Direct(mc, startedAt);
+        } catch (eStart) {
+          job = Promise.reject(eStart);
+        }
+        Promise.resolve(job)
           .then(function (fg) {
-            c411Active -= 1;
+            clearTimeout(watchdog);
+            release();
             finish(fg);
           })
           .catch(function () {
-            c411Active -= 1;
-            stopC411Heartbeat(mc);
-            clearOwnClaim(mc);
+            clearTimeout(watchdog);
+            release();
             finish(getC411Cached(mc) || { ok: false, hasFg: false, error: true });
           });
       }
@@ -2547,7 +2634,7 @@
           finish(hit);
           return;
         }
-        startOwnedFetch();
+        startOwnedFetch(!!(out && out.kind === 'timeout'));
       }
       function decide(delayedAlready) {
         if (finished) return;
@@ -2560,7 +2647,9 @@
         }
         var claim = claimFor(mc);
         if (c411ShouldWaitForClaim(claim, Date.now(), c411OwnerId)) {
-          waitForC411Settle(mc, claim.t).then(afterWait);
+          waitForC411Settle(mc, claim.t).then(afterWait, function () {
+            afterWait({ kind: 'dead' });
+          });
           return;
         }
         if (!delayedAlready) {
@@ -3237,25 +3326,28 @@
       .catch(function (err) {
         var login = !!(err && err.code === 'login');
         if (login && err.sure) setSessionHwy(false);
-        return {
-          name: null,
-          assessment: login ? 'Sign in' : 'Lookup failed',
-          login: login,
-          fleet: null,
-          safety: null,
-          alerts: null,
-          alertTypes: null,
-          cargoAmt: null,
-          bipdAmt: null,
-          glAmt: null,
-          connStatus: null,
-          dnu: false,
-          emails: [],
-          id: null,
-          dot: '',
-          nocache: true
-        };
+        return hwyFailResult(login);
       });
+  }
+  function hwyFailResult(login) {
+    return {
+      name: null,
+      assessment: login ? 'Sign in' : 'Lookup failed',
+      login: !!login,
+      fleet: null,
+      safety: null,
+      alerts: null,
+      alertTypes: null,
+      cargoAmt: null,
+      bipdAmt: null,
+      glAmt: null,
+      connStatus: null,
+      dnu: false,
+      emails: [],
+      id: null,
+      dot: '',
+      nocache: true
+    };
   }
   function lookupMc(mc, force) {
     if (!force) {
@@ -3269,21 +3361,37 @@
       abortHwy(mc);
       delete hwyVehiclesInflight[mc];
     }
-    inflight[mc] = new Promise(function (resolve) {
-      var mine = inflight[mc];
+    // Keep this lookup's own promise in a variable. The executor below runs before the
+    // assignment to inflight[mc] finishes, so reading inflight[mc] inside it gets the old value.
+    var mine = null;
+    mine = new Promise(function (resolve) {
       function start() {
         hwyActive += 1;
-        fetchHwy(mc).then(function (res) {
+        var ended = false;
+        function done(res) {
+          if (ended) return;
+          ended = true;
           hwyActive -= 1;
+          if (hwyActive < 0) hwyActive = 0;
           if (inflight[mc] === mine) delete inflight[mc];
-          resolve(res);
+          resolve(res || hwyFailResult(false));
           if (hwyWait.length) hwyWait.shift()();
+        }
+        var job;
+        try {
+          job = fetchHwy(mc);
+        } catch (eStart) {
+          job = Promise.reject(eStart);
+        }
+        Promise.resolve(job).then(done, function () {
+          done(hwyFailResult(false));
         });
       }
       if (hwyActive < 2) start();
       else hwyWait.push(start);
     });
-    return inflight[mc];
+    inflight[mc] = mine;
+    return mine;
   }
 
   function pillClass(assessment) {
@@ -4060,6 +4168,9 @@
     if (id) return 'https://highway.com/broker/carriers/' + encodeURIComponent(id);
     return SEARCH_URL + encodeURIComponent(mc);
   }
+  // Failed Highway results ("Lookup failed", "Sign in") are not cached, so retry them after the
+  // same 2 minute window the caches use for login and error results.
+  var HWY_RETRY_MS = 2 * 60 * 1000;
   function ensureMc(mc) {
     if (!mcStore[mc]) mcStore[mc] = { hwy: null, fg: null, subs: [], _hwyGen: 0 };
     var st = mcStore[mc];
@@ -4075,10 +4186,20 @@
       var fgHit = getC411Cached(mc);
       if (fgHit && !fgHit.login && !fgHit.error) st.fg = fgHit;
     }
+    if (
+      st._gotHwy &&
+      st._hwyDoneAt &&
+      !inflight[mc] &&
+      hwyNeedsRetry(st.hwy) &&
+      Date.now() - st._hwyDoneAt >= HWY_RETRY_MS
+    ) {
+      st._gotHwy = false;
+    }
     if (!st._gotHwy) {
       st._gotHwy = true;
       var gen = st._hwyGen || 0;
       lookupMc(mc).then(function (info) {
+        st._hwyDoneAt = Date.now();
         if ((st._hwyGen || 0) !== gen) return;
         if (info && info.login && st.hwy && !st.hwy.login) return;
         if (info && info.nocache && st.hwy && st.hwy.assessment && !st.hwy.login) return;
@@ -4113,6 +4234,7 @@
       st.hwy = null;
       notifyMc(mc);
       lookupMc(mc, true).then(function (info) {
+        st._hwyDoneAt = Date.now();
         if ((st._hwyGen || 0) !== gen) return;
         st.hwy = info || {};
         notifyMc(mc);
@@ -5164,7 +5286,7 @@
     clipText(carrierClipboardText(name, mc, dot));
     flashCopyBtn(btn, 'Copy Carrier + MC/DOT');
   }
-  function buildMsgCard(msg, mc, rateAmt) {
+  function buildMsgCard(msg, mc, rateAmt, withMin) {
     var st = ensureMc(mc);
     var wrapForMc = msg.querySelector('.hwy-mc-wrap[data-hwy-mc="' + mc + '"]');
     var fromAddr = threadCarrierAddr(wrapForMc || msg);
@@ -5172,6 +5294,7 @@
     card.setAttribute('data-ss-mc', mc);
     var head = el('span', 'ss-intel-row');
     var name = (st.hwy && st.hwy.name) || 'MC ' + mc;
+    if (withMin) head.appendChild(minimizeBtn());
     head.appendChild(el('span', 'ss-intel-name', name));
     var copyBtn = copyIconBtn('Copy Carrier + MC/DOT');
     copyBtn.addEventListener('click', function (ev) {
@@ -5269,6 +5392,7 @@
       extrasOnSig(),
       threshSig(),
       hwy.assessment || '',
+      hwy.name || '',
       hwy.fleet == null ? '' : hwy.fleet,
       hwy.safety == null ? '' : hwy.safety,
       hwy.connStatus || '',
@@ -5313,10 +5437,50 @@
     if (fastTipAnchor && bar.contains(fastTipAnchor)) hideFastTip();
     if (eqHiState && eqHiState.msg === msg) hideEquipHi();
     while (bar.firstChild) bar.removeChild(bar.firstChild);
-    mcs.forEach(function (mc) {
-      bar.appendChild(buildMsgCard(msg, mc, rateAmt));
+    mcs.forEach(function (mc, idx) {
+      bar.appendChild(buildMsgCard(msg, mc, rateAmt, idx === 0));
     });
     bar.setAttribute('data-ss-sig', sig);
+  }
+  // Header: Mac-style minimize dot first (top-left), then the Highway carrier name (hwy.name = legal_name || name).
+  function barHead(mcs) {
+    var head = el('div', 'ss-intel-head');
+    head.appendChild(minimizeBtn());
+    var mc0 = mcs[0];
+    var st0 = mc0 ? mcStore[mc0] || {} : {};
+    var label;
+    if (st0.hwy && st0.hwy.name) label = st0.hwy.name;
+    else if (!st0.hwy && mc0) label = 'Loading carrier\u2026';
+    else label = mc0 ? 'MC ' + mc0 : '';
+    head.appendChild(el('span', 'ss-intel-head-name', label));
+    return head;
+  }
+  var MINIMIZE_TIP = 'Minimize: pause Carrier Vetting (resume from the truck icon menu)';
+  function minimizeBtn() {
+    var b = el('span', 'ss-intel-min');
+    b.setAttribute('role', 'button');
+    b.setAttribute('tabindex', '0');
+    b.setAttribute('aria-label', MINIMIZE_TIP);
+    bindHoverTip(b, MINIMIZE_TIP);
+    function stop(ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
+    function go(ev) {
+      stop(ev);
+      try {
+        hideFastTip();
+      } catch (eTip) {}
+      setRunPaused(true);
+    }
+    b.addEventListener('mousedown', stop);
+    b.addEventListener('mouseup', stop);
+    b.addEventListener('click', go);
+    b.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter' || ev.key === ' ') go(ev);
+      else ev.stopPropagation();
+    });
+    return b;
   }
   function paintBar() {
     if (isPaused()) return;
@@ -5665,14 +5829,31 @@
     if (!qFrom) return !!teamMsg;
     return isSelfOrCoworkerAddr(qFrom);
   }
+  function rateMcFromOwnScope(root) {
+    var msg = messageRoot(root);
+    var card = msg && msg.querySelector && msg.querySelector('.ss-intel-card[data-ss-mc]');
+    if (card) return card.getAttribute('data-ss-mc') || '';
+    // Outside a single message (for example the subject line), only use the open thread's cards,
+    // and only when they all name the same MC.
+    var thread = openThreadRoot();
+    if (!thread || !thread.contains || !thread.contains(root)) return '';
+    var cards = thread.querySelectorAll('.ss-intel-card[data-ss-mc]');
+    var only = '';
+    var i;
+    for (i = 0; i < cards.length; i++) {
+      var one = cards[i].getAttribute('data-ss-mc') || '';
+      if (!one) continue;
+      if (only && one !== only) return '';
+      only = one;
+    }
+    return only;
+  }
   function wrapRatesInScope(root) {
     if (!root || !root.querySelector) return;
     if (inInboxList(root)) return;
-    var mc = messageMcForRates(root);
-    if (!mc) {
-      var card = document.querySelector('.ss-intel-card[data-ss-mc]');
-      if (card) mc = card.getAttribute('data-ss-mc') || '';
-    }
+    var mc = messageMcForRates(root) || rateMcFromOwnScope(root);
+    // No MC for this email or thread: leave the rate unlinked instead of borrowing a card from
+    // another email on the page.
     if (!mc) return;
     var msg = messageRoot(root) || root;
     var teamMsg = isSelfOrCoworkerAddr(messageFromAddr(msg));
@@ -6393,9 +6574,7 @@
         row.addEventListener('click', function (ev) {
           ev.preventDefault();
           ev.stopPropagation();
-          s.paused = opt.paused;
-          saveSettings(s);
-          renderPanelLists(q);
+          setRunPaused(opt.paused);
         });
         runHost.appendChild(row);
       });
@@ -7066,6 +7245,13 @@
     apply();
   }
 
+  // The settings menu On / Paused choice. The minimize button on the carrier bar calls this too.
+  function setRunPaused(paused) {
+    var s = loadSettings();
+    s.paused = !!paused;
+    saveSettings(s);
+    refreshPanel();
+  }
   function refreshPanel() {
     if (!panelEl) return;
     var q = (panelEl.querySelector('.ss-set-search') && panelEl.querySelector('.ss-set-search').value) || '';
